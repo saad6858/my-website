@@ -1,0 +1,52 @@
+name: Import Website Project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-project:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f my-platform-netlify.zip
+
+          rm -rf .project-import
+          mkdir .project-import
+
+          unzip -q my-platform-netlify.zip -d .project-import
+
+          test -d .project-import/my-platform
+
+          cp -a .project-import/my-platform/. .
+
+          rm -rf .project-import
+          rm -f my-platform-netlify.zip
+
+          rm -f .github/workflows/import-project.yml
+
+      - name: Commit imported project
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Import complete website project"
+          git push
