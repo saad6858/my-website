@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { adminAdd } from "@/lib/admin-db";
+import { checkRateLimit } from "@/lib/rate-limit";
+import type { ContactSubmission } from "@/types";
+export const runtime="nodejs";
+const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export async function POST(req:Request){try{const ip=(req.headers.get("x-forwarded-for")||req.headers.get("x-real-ip")||"unknown").split(",")[0].trim();const rl=await checkRateLimit(`contact:${ip}`,5,60*60*1000);if(!rl.allowed)return NextResponse.json({error:"Too many submissions. Please try again later."},{status:429});const b=await req.json();const name=String(b.name||"").trim(),email=String(b.email||"").trim().toLowerCase(),phone=String(b.phone||"").trim(),service=String(b.service||"Other").trim(),message=String(b.message||"").trim();if(!name||!email||!message)return NextResponse.json({error:"Name, email, and message are required."},{status:400});if(!emailRe.test(email))return NextResponse.json({error:"Please provide a valid email address."},{status:400});if(message.length>5000)return NextResponse.json({error:"Message is too long."},{status:400});const id=await adminAdd("contact_submissions",{name,email,phone,service,message,status:"new",date:new Date()} as Omit<ContactSubmission,"id">);return NextResponse.json({success:true,id})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to save message"},{status:500})}}

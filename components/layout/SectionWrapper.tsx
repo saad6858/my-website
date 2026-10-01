@@ -1,0 +1,1 @@
+export function SectionWrapper({children,className="",id,fullHeight=false}:{children:React.ReactNode;className?:string;id?:string;fullHeight?:boolean}){return <section id={id} className={`relative overflow-hidden py-24 md:py-32 ${fullHeight?"min-h-screen flex items-center":""} ${className}`}>{children}</section>}

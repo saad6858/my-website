@@ -1,0 +1,11 @@
+"use client";
+import { useEffect,useMemo,useState } from "react";
+import { Download,Mail,Send } from "lucide-react";
+import type { NewsletterSubscriber } from "@/types";
+import { deleteNewsletterSubscriber,getNewsletterSubscribers } from "@/lib/actions";
+import { AdminPageHeader,Kpi,Panel } from "@/components/dashboard/AdminPrimitives";
+import { SubscriberTable } from "@/components/dashboard/newsletter/SubscriberTable";
+import { BroadcastModal } from "@/components/dashboard/newsletter/BroadcastModal";
+import { Button } from "@/components/ui/Button";
+import { toCsv,toDate } from "@/lib/utils";
+export default function NewsletterPage(){const [subs,setSubs]=useState<NewsletterSubscriber[]>([]);const [q,setQ]=useState("");const [open,setOpen]=useState(false);const load=async()=>setSubs(await getNewsletterSubscribers());useEffect(()=>{load().catch(()=>{})},[]);const filtered=useMemo(()=>subs.filter(s=>!q||`${s.email} ${s.name}`.toLowerCase().includes(q.toLowerCase())),[subs,q]);const exportCsv=()=>{const blob=new Blob([toCsv(filtered.map(s=>({email:s.email,name:s.name,status:s.status,date:toDate(s.date).toISOString()})))],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="newsletter.csv";a.click()};return <div><AdminPageHeader eyebrow="AUDIENCE" title="Newsletter" description="Manage subscribers and prepare broadcasts." actions={<><Button variant="secondary" onClick={exportCsv}><Download size={16}/> Export</Button><Button onClick={()=>setOpen(true)}><Send size={16}/> Send Broadcast</Button></>}/><div className="mt-7 grid gap-3 sm:grid-cols-3"><Kpi label="Total" value={subs.length} icon={Mail}/><Kpi label="Active" value={subs.filter(s=>s.status==="active").length} icon={Mail}/><Kpi label="Unsubscribed" value={subs.filter(s=>s.status==="unsubscribed").length} icon={Mail}/></div><div className="mt-6"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search subscribers…" className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm outline-none"/></div><Panel className="mt-6"><SubscriberTable subscribers={filtered} onDelete={async s=>{if(confirm("Delete this subscriber?")){await deleteNewsletterSubscriber(s.id);load()}}}/></Panel><BroadcastModal isOpen={open} onClose={()=>setOpen(false)} subscribers={subs}/></div>}

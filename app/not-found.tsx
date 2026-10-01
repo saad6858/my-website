@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ParticleBackground } from "@/components/animations/ParticleBackground";
+export default function NotFound() { return <main className="relative grid min-h-screen place-items-center overflow-hidden bg-bg-primary"><ParticleBackground particleCount={55} interactive={false}/><div className="relative z-10 text-center"><div className="text-[clamp(7rem,25vw,15rem)] font-black leading-none text-gradient">404</div><h1 className="mt-4 text-2xl font-semibold">Page not found</h1><p className="mx-auto mt-3 max-w-md text-slate-400">The route you requested does not exist.</p><Link href="/" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400"><ArrowLeft size={18}/> Go Home</Link></div></main>; }

@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import crypto from "crypto";
+import { requireAdminApi } from "@/lib/server-auth";
+export const runtime="nodejs";
+export async function POST(req:Request){try{await requireAdminApi();const body=await req.json().catch(()=>({}));const root=(process.env.CLOUDINARY_UPLOAD_FOLDER||"my-platform").replace(/[^\w\-/]/g,"").replace(/^\/+|\/+$/g,"");const child=String(body.folder||"").replace(/^\/+|\/+$/g,"").replace(/\.\./g,"").replace(/[^\w\-/]/g,"");const folder=child?`${root}/${child}`:root;const cloudName=process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,apiKey=process.env.CLOUDINARY_API_KEY,secret=process.env.CLOUDINARY_API_SECRET;if(!cloudName||!apiKey||!secret)return NextResponse.json({error:"Cloudinary is not configured."},{status:500});const timestamp=Math.floor(Date.now()/1000);const signature=crypto.createHash("sha1").update(`folder=${folder}&timestamp=${timestamp}${secret}`).digest("hex");return NextResponse.json({timestamp,signature,apiKey,cloudName,folder})}catch(e){if(e instanceof Response)return e;return NextResponse.json({error:e instanceof Error?e.message:"Unauthorized"},{status:401})}}

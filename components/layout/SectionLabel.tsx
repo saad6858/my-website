@@ -1,0 +1,1 @@
+export function SectionLabel({text,className=""}:{text:string;className?:string}){return <div className={`flex items-center gap-3 font-mono text-xs uppercase tracking-[.2em] text-emerald-400 ${className}`}><span className="h-px w-8 bg-emerald-500"/><span>{text}</span></div>}

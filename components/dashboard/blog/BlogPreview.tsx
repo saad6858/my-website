@@ -1,0 +1,2 @@
+import { MarkdownContent } from "@/lib/markdown";
+export function BlogPreview({content}:{content:string}){return <div className="min-h-[420px] rounded-2xl border border-white/10 bg-slate-950/60 p-6"><div className="prose prose-invert max-w-none prose-headings:text-white prose-p:text-slate-300 prose-a:text-emerald-400 prose-blockquote:border-emerald-500 prose-code:bg-slate-800 prose-code:px-1.5"><MarkdownContent content={content||"Nothing to preview yet."}/></div></div>}

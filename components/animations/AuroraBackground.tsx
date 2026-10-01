@@ -1,0 +1,2 @@
+"use client";
+export function AuroraBackground(){return <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden"><div className="absolute -left-20 top-0 h-[45rem] w-[45rem] rounded-full bg-emerald-500/10 blur-[120px] animate-aurora"/><div className="absolute right-[-10rem] top-[-8rem] h-[38rem] w-[38rem] rounded-full bg-indigo-500/10 blur-[120px] animate-aurora"/><div className="absolute bottom-[-12rem] left-1/3 h-[30rem] w-[30rem] rounded-full bg-cyan-400/10 blur-[120px] animate-aurora"/></div>}

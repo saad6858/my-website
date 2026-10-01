@@ -1,0 +1,5 @@
+"use client";
+import { Trash2 } from "lucide-react";
+import type { NewsletterSubscriber } from "@/types";
+import { toDate } from "@/lib/utils";
+export function SubscriberTable({subscribers,onDelete}:{subscribers:NewsletterSubscriber[];onDelete:(s:NewsletterSubscriber)=>void}){return <div className="overflow-x-auto"><table className="min-w-[620px] w-full text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-600"><tr><th className="px-4 py-3">Email</th><th>Name</th><th>Status</th><th>Date</th><th/></tr></thead><tbody>{subscribers.map(s=><tr key={s.id} className="border-b border-slate-800"><td className="px-4 py-4 text-white">{s.email}</td><td className="text-slate-400">{s.name||"—"}</td><td><span className={s.status==="active"?"text-emerald-300":"text-slate-500"}>{s.status}</span></td><td className="text-slate-500">{toDate(s.date).toLocaleDateString()}</td><td className="px-4 text-right"><button onClick={()=>onDelete(s)} className="rounded-lg p-2 text-slate-500 hover:text-red-300"><Trash2 size={15}/></button></td></tr>)}</tbody></table></div>}

@@ -1,0 +1,51 @@
+import type { SiteSettings } from "@/types";
+
+export const defaultSiteSettings: SiteSettings = {
+  id: "main",
+  brand: {
+    name: process.env.NEXT_PUBLIC_SITE_NAME ?? "My Platform",
+    tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE ?? "AI systems, automation, and digital engineering.",
+    logoText: "MP",
+  },
+  sections: {
+    hero: true,
+    about: true,
+    services: true,
+    portfolio: true,
+    blog: true,
+    contact: true,
+    stats: true,
+    process: true,
+    pricing: true,
+    testimonials: true,
+    faq: true,
+  },
+  appearance: {
+    accentColor: "#10b981",
+    fontFamily: "Inter",
+    enableCustomCursor: true,
+    enableParticles: true,
+    enableAurora: true,
+    enableMeshGradient: true,
+  },
+  announcement: {
+    enabled: false,
+    text: "Now building intelligent digital systems.",
+    link: "/contact",
+    bgColor: "rgba(16,185,129,.08)",
+    textColor: "#34d399",
+  },
+  seo: {
+    title: process.env.NEXT_PUBLIC_SITE_NAME ?? "My Platform",
+    description: "A premium personal brand platform for AI, automation, systems, and building in public.",
+    ogImage: "",
+    keywords: "AI, automation, agentic AI, web development, systems",
+    robots: "index, follow",
+  },
+  pricing: { currency: "₨", tiers: [] },
+  contact: { whatsapp: "", email: "", location: "", linkedin: "", github: "", twitter: "" },
+  notifications: { emailEnabled: false, newLead: true, newContact: true, dailySummary: false, notificationEmail: "" },
+  whatsappTemplates: { outreach: "", followUp: "", sampleResponse: "", pricingResponse: "" },
+  stats: [],
+  updatedAt: new Date(),
+};

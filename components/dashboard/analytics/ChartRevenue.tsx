@@ -1,0 +1,4 @@
+"use client";
+import { Area,AreaChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from "recharts";
+import { formatCurrency } from "@/lib/utils";
+export function ChartRevenue({data}:{data:Array<{month:string;revenue:number}>}){return <ResponsiveContainer width="100%" height={300}><AreaChart data={data}><defs><linearGradient id="rev" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={.24}/><stop offset="100%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/><XAxis dataKey="month" stroke="#64748b" fontSize={11}/><YAxis stroke="#64748b" fontSize={11}/><Tooltip formatter={(v)=>formatCurrency(Number(v))} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,color:"#f8fafc"}}/><Area type="monotone" dataKey="revenue" stroke="#34d399" strokeWidth={2} fill="url(#rev)"/></AreaChart></ResponsiveContainer>}

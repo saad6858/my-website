@@ -1,0 +1,2 @@
+"use client";
+export function GlassCard({children,className="",hover=true,glow=false}:{children:React.ReactNode;className?:string;hover?:boolean;glow?:boolean}){return <div className={`rounded-2xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur-xl transition-all duration-300 ${hover?"hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5":""} ${glow?"shadow-glow":""} ${className}`}>{children}</div>}

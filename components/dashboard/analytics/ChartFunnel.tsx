@@ -1,0 +1,3 @@
+"use client";
+import { Bar,BarChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from "recharts";
+export function ChartFunnel({data}:{data:Array<{stage:string;count:number;rate:number}>}){return <ResponsiveContainer width="100%" height={300}><BarChart data={data} layout="vertical" margin={{left:20,right:20}}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/><XAxis type="number" stroke="#64748b"/><YAxis type="category" dataKey="stage" width={100} stroke="#94a3b8"/><Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,color:"#f8fafc"}}/><Bar dataKey="count" fill="#10b981" radius={[0,6,6,0]}/></BarChart></ResponsiveContainer>}

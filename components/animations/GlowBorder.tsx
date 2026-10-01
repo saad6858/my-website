@@ -1,0 +1,2 @@
+"use client";
+export function GlowBorder({children,className,colors=["#10b981","#6366f1","#34d399"]}:{children:React.ReactNode;className?:string;colors?:string[]}){const gradient=`conic-gradient(from 180deg,${colors.join(",")})`;return <div className={`relative rounded-2xl p-[1px] ${className||""}`} style={{background:gradient,animation:"spin 4s linear infinite"}}><div className="rounded-2xl bg-slate-950">{children}</div></div>}

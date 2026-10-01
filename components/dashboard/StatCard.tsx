@@ -1,0 +1,5 @@
+"use client";
+import type { ComponentType } from "react";
+import { ArrowDownRight,ArrowUpRight } from "lucide-react";
+import { CountUp } from "@/components/animations/CountUp";
+export function StatCard({title,value,trend,icon:Icon}:{title:string;value:number|string;trend?:number;icon:ComponentType<{size?:number}>}){const numeric=typeof value==="number";return <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:-translate-y-0.5 hover:border-indigo-500/20"><div className="flex items-start justify-between"><span className="rounded-xl bg-indigo-500/10 p-3 text-indigo-300"><Icon size={19}/></span>{typeof trend==="number"?<span className={trend>0?"text-emerald-300":"text-red-300"}>{trend>=0?<ArrowUpRight size={15} className="inline"/>:<ArrowDownRight size={15} className="inline"/>}{Math.abs(trend)}%</span>:null}</div><p className="mt-5 text-xs uppercase tracking-wider text-slate-600">{title}</p><p className="mt-2 text-3xl font-bold text-white">{numeric?<CountUp end={value as number}/>:value}</p></div>}

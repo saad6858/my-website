@@ -1,0 +1,3 @@
+import type { MetadataRoute } from "next";
+import { getPosts } from "@/lib/actions";
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const base=process.env.NEXT_PUBLIC_APP_URL??"http://localhost:3000";const staticPaths=["/","/about","/services","/portfolio","/blog","/contact"];let posts=[] as Awaited<ReturnType<typeof getPosts>>;try{posts=await getPosts(500)}catch{}return [...staticPaths.map(path=>({url:`${base}${path}`,changeFrequency:"weekly" as const,priority:path==="/"?.9:.7})),...posts.map(p=>({url:`${base}/blog/${p.slug}`,lastModified:p.updatedAt?new Date(p.updatedAt):new Date(),changeFrequency:"monthly" as const,priority:.6}))]}

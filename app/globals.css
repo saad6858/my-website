@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #030712;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --bg-card: rgba(15, 23, 42, 0.8);
+  --accent-primary: #10b981;
+  --accent-secondary: #34d399;
+  --accent-tertiary: #f59e0b;
+  --accent-quaternary: #6366f1;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #334155;
+  --border-light: #475569;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+}
+
+html { scroll-behavior: smooth; background: var(--bg-primary); }
+body { min-height: 100vh; background: var(--bg-primary); color: var(--text-primary); }
+body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+body::before { opacity: .18; background: radial-gradient(circle at 10% 10%, rgba(16,185,129,.11), transparent 25%), radial-gradient(circle at 90% 20%, rgba(99,102,241,.10), transparent 25%); animation: aurora 20s linear infinite; }
+body::after { opacity: .03; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E"); }
+* { border-color: rgba(255,255,255,.08); }
+::selection { background: var(--accent-primary); color: #02120b; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: #020617; }
+::-webkit-scrollbar-thumb { background: #047857; border-radius: 999px; border: 2px solid #020617; }
+::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+.text-gradient { background: linear-gradient(90deg, var(--accent-secondary), #5eead4 35%, #a7f3d0 65%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.glass { background: rgba(15,23,42,.62); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,.08); }
+.glow { box-shadow: 0 0 40px rgba(16,185,129,.15); }
+.magnetic { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+
+@media (pointer: fine) { a, button, [role="button"], input, textarea, select { cursor: pointer; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

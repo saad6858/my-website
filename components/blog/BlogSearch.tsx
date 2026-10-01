@@ -1,0 +1,3 @@
+"use client";
+import { Search,X } from "lucide-react";
+export function BlogSearch({value,onChange,placeholder="Search posts..."}:{value:string;onChange:(v:string)=>void;placeholder?:string}){return <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-white/10 bg-white/[.03] px-11 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-500/50"/>{value?<button onClick={()=>onChange("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"><X size={17}/></button>:null}</div>}

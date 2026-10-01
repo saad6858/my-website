@@ -1,0 +1,3 @@
+"use client";
+import { Bar,BarChart,CartesianGrid,Legend,ResponsiveContainer,Tooltip,XAxis,YAxis } from "recharts";
+export function ChartMessages({data}:{data:Array<{date:string;messages:number;replies:number}>}){return <ResponsiveContainer width="100%" height={300}><BarChart data={data}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/><XAxis dataKey="date" stroke="#64748b" fontSize={11}/><YAxis stroke="#64748b" fontSize={11}/><Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,color:"#f8fafc"}}/><Legend/><Bar dataKey="messages" fill="#6366f1" radius={[4,4,0,0]}/><Bar dataKey="replies" fill="#10b981" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}

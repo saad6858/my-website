@@ -1,0 +1,3 @@
+"use client";
+import { motion } from "framer-motion";
+export function PortfolioFilter({categories,active,onChange}:{categories:string[];active:string;onChange:(v:string)=>void}){return <div className="flex gap-2 overflow-x-auto pb-2">{categories.map(c=><button key={c} onClick={()=>onChange(c)} className={`relative whitespace-nowrap rounded-xl border px-4 py-2 text-sm transition ${active===c?"border-emerald-500/50 bg-emerald-500/10 text-emerald-300":"border-white/10 text-slate-400 hover:text-white"}`}>{c}{active===c?<motion.span layoutId="portfolio-filter" className="absolute inset-x-3 -bottom-px h-px bg-emerald-400"/>:null}</button>)}</div>}

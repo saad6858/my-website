@@ -1,0 +1,4 @@
+"use client";
+import { useRef } from "react";
+import { Textarea } from "@/components/dashboard/AdminPrimitives";
+export function TemplateEditor({value,onChange,variables}:{value:string;onChange:(v:string)=>void;variables:string[]}){const ref=useRef<HTMLTextAreaElement>(null);const insert=(v:string)=>{const e=ref.current;if(!e)return;const a=e.selectionStart;onChange(value.slice(0,a)+v+value.slice(e.selectionEnd));requestAnimationFrame(()=>{e.focus();e.setSelectionRange(a+v.length,a+v.length)})};return <div><Textarea ref={ref} rows={6} value={value} onChange={e=>onChange(e.target.value)} className="font-mono"/><div className="mt-2 flex flex-wrap gap-2">{variables.map(v=><button type="button" key={v} onClick={()=>insert(`{{${v}}}`)} className="rounded-lg bg-emerald-500/10 px-2 py-1 font-mono text-xs text-emerald-300">{`{{${v}}}`}</button>)}</div></div>}

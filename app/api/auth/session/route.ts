@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { adminAuth } from "@/lib/firebase-admin";
+import { SESSION_COOKIE } from "@/lib/server-auth";
+export const runtime="nodejs";
+export async function POST(req:Request){try{const {idToken}=await req.json();if(typeof idToken!=="string"||!idToken) return NextResponse.json({error:"Missing ID token"},{status:400});const decoded=await adminAuth.verifyIdToken(idToken,true);const adminEmail=process.env.ADMIN_EMAIL?.trim().toLowerCase();if(adminEmail&&decoded.email?.toLowerCase()===adminEmail){const user=await adminAuth.getUser(decoded.uid);if(!user.customClaims?.admin) await adminAuth.setCustomUserClaims(decoded.uid,{...(user.customClaims||{}),admin:true});}const expiresIn=1000*60*60*24*5;const cookie=await adminAuth.createSessionCookie(idToken,{expiresIn});const res=NextResponse.json({success:true});res.cookies.set(SESSION_COOKIE,cookie,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:Math.floor(expiresIn/1000)});return res}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to create session"},{status:401})}}

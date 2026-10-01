@@ -1,0 +1,7 @@
+"use client";
+import { Trash2 } from "lucide-react";
+import type { Transaction } from "@/types";
+import { deleteTransaction } from "@/lib/actions";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { StatusBadge } from "@/components/layout/StatusBadge";
+export function TransactionTable({transactions,onChanged}:{transactions:Transaction[];onChanged:()=>void}){return <div className="overflow-x-auto rounded-2xl border border-white/10"><table className="min-w-full text-sm"><thead className="bg-white/[.03] text-left text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Amount</th><th/></tr></thead><tbody>{transactions.map(t=><tr key={t.id} className="border-t border-white/5"><td className="px-4 py-4 text-slate-500">{formatDate(t.date)}</td><td className="px-4 py-4"><StatusBadge status={t.type}/></td><td className="px-4 py-4 capitalize text-slate-400">{t.category.replaceAll("_"," ")}</td><td className="px-4 py-4 text-slate-300">{t.description}</td><td className={`px-4 py-4 font-semibold ${t.type==='income'?"text-emerald-300":"text-red-300"}`}>{t.type==='income'?"+":"-"}{formatCurrency(t.amount)}</td><td className="px-4 py-4"><button onClick={async()=>{if(confirm("Delete transaction?")){await deleteTransaction(t.id);onChanged()}}} className="rounded-lg p-2 text-slate-600 hover:text-red-300"><Trash2 size={15}/></button></td></tr>)}</tbody></table></div>}

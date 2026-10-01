@@ -1,0 +1,11 @@
+"use client";
+import Link from "next/link";
+import { Menu } from "lucide-react";
+import { motion } from "framer-motion";
+import { useEffect,useState } from "react";
+import { usePathname } from "next/navigation";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useAuth } from "@/hooks/useAuth";
+import { MobileNav } from "./MobileNav";
+const links=[['/','Home','hero'],['/about','About','about'],['/services','Services','services'],['/portfolio','Portfolio','portfolio'],['/blog','Blog','blog'],['/contact','Contact','contact']] as const;
+export function Navbar(){const {settings}=useSiteSettings();const {isAdmin}=useAuth();const pathname=usePathname();const [open,setOpen]=useState(false),[scrolled,setScrolled]=useState(false),[hidden,setHidden]=useState(false);useEffect(()=>{let last=0;const on=()=>{const y=scrollY;setScrolled(y>50);setHidden(y>200&&y>last);last=y};addEventListener("scroll",on,{passive:true});return()=>removeEventListener("scroll",on)},[]);const visible=links.filter(([, ,key])=>settings.sections[key]);return <><motion.header animate={{y:hidden?"-100%":0}} transition={{duration:.3}} className={`fixed inset-x-0 top-0 z-40 ${scrolled?"border-b border-white/5 bg-slate-900/80 backdrop-blur-xl":"bg-transparent"}`}><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8"><Link href="/" className="text-lg font-black tracking-tight text-gradient">{settings.brand.name}</Link><nav className="hidden items-center gap-1 lg:flex">{visible.map(([href,label])=><Link key={href} href={href} className={`relative rounded-lg px-3 py-2 text-sm transition ${pathname===href?"text-white":"text-slate-400 hover:text-white"}`}>{label}{pathname===href?<motion.span layoutId="nav-active" className="absolute inset-x-3 -bottom-1 h-px bg-emerald-400"/>:null}</Link>)}</nav><div className="hidden items-center gap-3 lg:flex">{isAdmin?<Link href="/dashboard" className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/20">Dashboard</Link>:null}</div><button className="rounded-xl border border-white/10 bg-white/5 p-2 lg:hidden" onClick={()=>setOpen(true)} aria-label="Open menu"><Menu size={20}/></button></div></motion.header><MobileNav open={open} onClose={()=>setOpen(false)} links={visible} brandName={settings.brand.name} /></>}

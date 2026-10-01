@@ -1,0 +1,8 @@
+{
+  "indexes": [
+    {"collectionGroup":"posts","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"publishedAt","order":"DESCENDING"}]},
+    {"collectionGroup":"leads","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"dateFollowUp","order":"ASCENDING"}]},
+    {"collectionGroup":"content_calendar","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"scheduledDate","order":"ASCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,3 @@
+"use client";
+import { useEffect } from "react";
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) { useEffect(() => { console.error(error); }, [error]); return <div className="grid min-h-[60vh] place-items-center px-6"><div className="text-center"><p className="font-mono text-xs uppercase tracking-[.3em] text-emerald-400">Something went wrong</p><h1 className="mt-4 text-3xl font-bold">That page hit an unexpected error.</h1><button onClick={() => reset()} className="mt-6 rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-slate-950">Try again</button></div></div>; }

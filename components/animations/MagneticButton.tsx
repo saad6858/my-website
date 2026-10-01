@@ -1,0 +1,3 @@
+"use client";
+import { motion,useMotionValue,useSpring } from "framer-motion";
+export function MagneticButton({children,className,strength=.3,onClick}:{children:React.ReactNode;className?:string;strength?:number;onClick?:()=>void}){const x=useMotionValue(0),y=useMotionValue(0);const sx=useSpring(x,{stiffness:260,damping:18}),sy=useSpring(y,{stiffness:260,damping:18});return <motion.button style={{x:sx,y:sy}} onMouseMove={e=>{const r=e.currentTarget.getBoundingClientRect();x.set((e.clientX-(r.left+r.width/2))*strength);y.set((e.clientY-(r.top+r.height/2))*strength)}} onMouseLeave={()=>{x.set(0);y.set(0)}} whileHover={{scale:1.04}} whileTap={{scale:.98}} onClick={onClick} className={className}>{children}</motion.button>}

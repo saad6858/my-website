@@ -1,0 +1,1 @@
+export function Container({children,className="",size="default"}:{children:React.ReactNode;className?:string;size?:"default"|"small"|"large"}){const w={default:"max-w-7xl",small:"max-w-4xl",large:"max-w-screen-2xl"}[size];return <div className={`mx-auto w-full px-4 sm:px-6 lg:px-8 ${w} ${className}`}>{children}</div>}

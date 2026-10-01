@@ -1,0 +1,1 @@
+export function SEOHead({structuredData}:{structuredData?:Record<string,unknown>}){return structuredData?<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(structuredData)}}/>:null;}

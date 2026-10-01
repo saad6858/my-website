@@ -1,0 +1,2 @@
+"use client";
+export function ColorPicker({colors,selected,onChange}:{colors:string[];selected:string;onChange:(v:string)=>void}){return <div className="flex flex-wrap gap-3">{colors.map(c=><button type="button" key={c} aria-label={c} onClick={()=>onChange(c)} className={`h-9 w-9 rounded-full ring-offset-2 ring-offset-slate-950 transition ${selected.toLowerCase()===c.toLowerCase()?"ring-2 ring-white":""}`} style={{background:c}}/> )}</div>}
