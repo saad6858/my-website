@@ -6,6 +6,7 @@ import type { SiteSettings } from "@/types";
 function publicSettings(settings: SiteSettings): Partial<SiteSettings> {
   return {
     id: settings.id,
+    siteVersion: settings.siteVersion ?? defaultSiteSettings.siteVersion,
     brand: settings.brand,
     sections: settings.sections,
     appearance: settings.appearance,

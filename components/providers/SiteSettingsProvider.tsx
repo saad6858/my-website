@@ -8,6 +8,7 @@ const SiteSettingsContext=createContext<SiteSettingsContextValue|null>(null);
 const merge=(data:Partial<SiteSettings>):SiteSettings=>({
   ...defaultSiteSettings,
   ...data,
+  siteVersion:data.siteVersion??defaultSiteSettings.siteVersion,
   brand:{...defaultSiteSettings.brand,...data.brand},
   sections:{...defaultSiteSettings.sections,...data.sections},
   appearance:{...defaultSiteSettings.appearance,...data.appearance},

@@ -2,6 +2,7 @@ import type { SiteSettings } from "@/types";
 
 export const defaultSiteSettings: SiteSettings = {
   id: "main",
+  siteVersion: "v1-dark",
   brand: {
     name: process.env.NEXT_PUBLIC_SITE_NAME ?? "My Platform",
     tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE ?? "AI systems, automation, and digital engineering.",

@@ -2,6 +2,8 @@ import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type DateLike = Date | Timestamp | FieldValue;
 
+export type SiteVersion = "v1-dark" | "v2-paper" | "v3-swiss" | "v4-studio" | "v5-blueprint";
+
 export type LeadSource = "zameen" | "facebook" | "instagram" | "referral" | "website" | "linkedin" | "other";
 export type LeadStatus = "new" | "contacted" | "replied" | "sample_sent" | "negotiating" | "converted" | "lost" | "follow_up";
 export type ProjectStatus = "pending" | "in_progress" | "review" | "delivered" | "paid" | "cancelled";
@@ -30,6 +32,7 @@ export interface PricingTier {
 
 export interface SiteSettings {
   id: string;
+  siteVersion: SiteVersion;
   brand: {
     name: string;
     tagline: string;
