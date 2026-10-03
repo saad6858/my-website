@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionClaims } from "@/lib/server-auth";
+import { getSessionClaims, requireAdmin } from "@/lib/server-auth";
 import { seedDatabase } from "@/lib/seed";
 export default async function SeedPage(){const claims=await getSessionClaims();const allowed=Boolean(claims&&((claims.admin===true)||(process.env.ADMIN_EMAIL&&claims.email?.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase())));if(!allowed)redirect("/login?reason=seed");return <SeedClient/>}
-async function run(){"use server";await seedDatabase();redirect("/seed?done=1")}
+async function run(){"use server";await requireAdmin();await seedDatabase();redirect("/seed?done=1")}
 function SeedClient(){return <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white"><div className="w-full max-w-xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8"><p className="font-mono text-xs uppercase tracking-[.25em] text-emerald-300">ONE-TIME SETUP</p><h1 className="mt-3 text-3xl font-bold">Seed the platform</h1><p className="mt-4 leading-7 text-slate-400">Creates starter site settings, service definitions, portfolio items, sample posts, and a couple of demo CRM records. Run this only after Firestore is configured.</p><form action={run} className="mt-7"><button className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 hover:bg-emerald-400">Seed Database</button></form><Link href="/dashboard" className="mt-4 block text-center text-sm text-slate-500 hover:text-white">Back to dashboard</Link></div></main>}
