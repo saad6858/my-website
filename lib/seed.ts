@@ -1,6 +1,7 @@
 import { adminDb } from "./firebase-admin";
 import { defaultSiteSettings } from "./site-defaults";
 import { slugify } from "./utils";
+import type { DocumentData } from "firebase-admin/firestore";
 
 const now = new Date();
 
@@ -170,7 +171,14 @@ export async function seedDatabase() {
     await settingsRef.set(defaultSettings);
     report.site_settings = 1;
   }
-  const collections: Record<string, unknown[]> = { services: seedServices, posts, portfolio, leads, transactions, content_calendar: content };
+  const collections: Record<string, DocumentData[]> = {
+  services: seedServices,
+  posts,
+  portfolio,
+  leads,
+  transactions,
+  content_calendar: content,
+};
   for (const [collection, items] of Object.entries(collections)) {
     const exists = !(await adminDb.collection(collection).limit(1).get()).empty;
     if (exists) continue;
