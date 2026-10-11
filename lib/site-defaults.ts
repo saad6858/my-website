@@ -22,7 +22,9 @@ export const defaultSiteSettings: SiteSettings = {
     faq: true,
   },
   appearance: {
-    accentColor: "#10b981",
+    accentColor: "#e5132b",
+    layoutDesign: "series-cinema",
+    colorTheme: "obsidian-crimson",
     fontFamily: "Inter",
     enableCustomCursor: true,
     enableParticles: true,

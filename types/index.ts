@@ -3,6 +3,8 @@ import type { FieldValue, Timestamp } from "firebase/firestore";
 export type DateLike = Date | Timestamp | FieldValue;
 
 export type SiteVersion = "v1-dark" | "v2-paper" | "v3-swiss" | "v4-studio" | "v5-blueprint";
+export type LayoutDesign = "series-cinema" | "editorial-kinetic" | "bento-lab" | "gallery-immersive" | "neo-brutalist" | "quiet-luxury" | "terminal-noir" | "orbit-cards" | "split-screen" | "type-specimen" | "chromatic-glass" | "architect-grid" | "motion-poster" | "soft-depth" | "signal-dashboard";
+export type ColorTheme = "obsidian-crimson" | "midnight-emerald" | "ultraviolet-night" | "ocean-abyss" | "graphite-amber" | "ivory-editorial" | "warm-sand" | "arctic-blue" | "sage-studio" | "rose-quartz" | "lavender-mist" | "citrus-pop" | "cobalt-paper" | "terracotta" | "mono-ink";
 
 export type LeadSource = "zameen" | "facebook" | "instagram" | "referral" | "website" | "linkedin" | "other";
 export type LeadStatus = "new" | "contacted" | "replied" | "sample_sent" | "negotiating" | "converted" | "lost" | "follow_up";
@@ -53,6 +55,8 @@ export interface SiteSettings {
   };
   appearance: {
     accentColor: string;
+    layoutDesign: LayoutDesign;
+    colorTheme: ColorTheme;
     fontFamily: string;
     enableCustomCursor: boolean;
     enableParticles: boolean;
@@ -236,6 +240,13 @@ export interface Service {
   price: string;
   cta: string;
   badge?: string;
+  idealFor?: string;
+  deliverables?: string[];
+  approach?: string[];
+  boundaries?: string[];
+  timeline?: string;
+  integrations?: string[];
+  pricingNotes?: string;
   enabled: boolean;
 }
 

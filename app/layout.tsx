@@ -9,6 +9,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollProgress } from "@/components/animations/ScrollProgress";
+import { SmoothScroll } from "@/components/animations/SmoothScroll";
 import { CustomCursorGate } from "@/components/animations/CustomCursorGate";
 import { PageTracking } from "@/components/analytics/PageTracking";
 
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en" className="dark">
     <body className={`${inter.variable} ${mono.variable} bg-bg-primary text-text-primary antialiased overflow-x-hidden`}>
-      <AuthProvider><SiteSettingsProvider><ThemeProvider><PageTracking /><AnnouncementBar /><ScrollProgress /><CustomCursorGate /><Navbar />{children}<Footer /></ThemeProvider></SiteSettingsProvider></AuthProvider>
+      <AuthProvider><SiteSettingsProvider><ThemeProvider><PageTracking /><SmoothScroll /><div aria-hidden className="cine-grain" /><AnnouncementBar /><ScrollProgress /><CustomCursorGate /><Navbar />{children}<Footer /></ThemeProvider></SiteSettingsProvider></AuthProvider>
     </body>
   </html>;
 }

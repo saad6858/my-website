@@ -28,8 +28,9 @@ export async function uploadFile(path: string, file: File): Promise<CloudinaryUp
   form.append("timestamp", String(signed.timestamp));
   form.append("signature", signed.signature);
   form.append("folder", signed.folder);
-  const isVideo = file.type.startsWith("video/");
-  const resourceType = isVideo ? "video" : file.type.startsWith("image/") ? "image" : "raw";
+  const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+  const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|avif)$/i.test(file.name);
+  const resourceType = isVideo ? "video" : isImage ? "image" : "raw";
   const response = await fetch(`https://api.cloudinary.com/v1_1/${signed.cloudName}/${resourceType}/upload`, { method: "POST", body: form });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message ?? "Upload failed");
