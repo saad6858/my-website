@@ -1,0 +1,77 @@
+name: Apply Netlify build fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-build-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ github.token }}
+
+      - name: Validate and apply fix archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path("netlify-build-fix.zip")
+          expected = {
+              "components/layout/Footer.tsx",
+              "components/layout/Navbar.tsx",
+              "components/dashboard/Sidebar.tsx",
+          }
+          if not archive.is_file():
+              raise SystemExit(
+                  "Missing netlify-build-fix.zip at repository root. "
+                  "Upload the ZIP before running this workflow."
+              )
+          with ZipFile(archive) as z:
+              names = set(z.namelist())
+              if names != expected:
+                  raise SystemExit(
+                      f"Unexpected ZIP contents. Expected {sorted(expected)}, got {sorted(names)}"
+                  )
+              for name in names:
+                  if name.startswith("/") or ".." in Path(name).parts:
+                      raise SystemExit(f"Unsafe archive path: {name}")
+              z.extractall(Path("."))
+
+          footer = Path("components/layout/Footer.tsx").read_text()
+          navbar = Path("components/layout/Navbar.tsx").read_text()
+          sidebar = Path("components/dashboard/Sidebar.tsx").read_text()
+          assert footer.count('import Image from "next/image";') == 1
+          assert navbar.count('import Image from "next/image";') == 1
+          assert "Github, Linkedin" not in footer
+          assert "<Github size={16}/>" not in footer
+          assert "<Linkedin size={16}/>" not in footer
+          assert "PanelsTopLeft,PanelsTopLeft" not in sidebar
+          assert sidebar.count("['/dashboard/portfolio','Portfolio Studio',PanelsTopLeft]") == 1
+
+          archive.unlink()
+          print("Patch applied and basic import/navigation checks passed.")
+          PY
+
+      - name: Commit and push the fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/layout/Footer.tsx components/layout/Navbar.tsx components/dashboard/Sidebar.tsx
+          git add -u -- netlify-build-fix.zip
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Fix duplicate imports blocking Netlify build"
+          git push origin HEAD:main
