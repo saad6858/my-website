@@ -1,8 +1,6 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import Image from "next/image";
-import Image from "next/image";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect,useState } from "react";
