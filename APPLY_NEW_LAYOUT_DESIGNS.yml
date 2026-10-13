@@ -1,0 +1,209 @@
+name: Apply and verify complete public + admin redesign
+
+on:
+  push:
+    branches:
+      - redesign-patch
+    paths:
+      - website-redesign-patch.zip
+      - .github/workflows/apply-new-layout-designs.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: complete-site-redesign
+  cancel-in-progress: false
+
+jobs:
+  apply-verify-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Require a temporary patch branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+            echo "Run this workflow from the temporary branch containing the patch ZIP and this workflow. The patch upload must not itself create a production deployment."
+            exit 1
+          fi
+
+      - name: Check out patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          path: source
+          token: ${{ github.token }}
+
+      - name: Check out production main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: target
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Validate archive and overlay new public JSX
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/website-redesign-patch.zip || { echo "Missing website-redesign-patch.zip on the selected branch."; exit 1; }
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          expected = {
+            ".redesign/apply-redesign.mjs", "README_REDESIGN.md", "app/layout-designs.css", "app/admin-layout-designs.css", "app/page.tsx",
+            "app/services/[slug]/page.tsx", "app/services/page.tsx", "app/services/ai-chatbots/page.tsx",
+            "app/services/appointment-automation/page.tsx", "app/services/customer-support-automation/page.tsx",
+            "app/contact/page.tsx", "app/portfolio/page.tsx", "app/blog/page.tsx", "app/blog/[slug]/page.tsx",
+            "components/layouts/PublicComposition.tsx", "components/redesign/DesignFrame.tsx", "components/redesign/MagneticSurface.tsx",
+            "components/portfolio/ProjectModal.tsx", "components/portfolio/ProjectRailControls.tsx",
+            "components/sections/About.tsx", "components/sections/Blog.tsx", "components/sections/Contact.tsx", "components/sections/CTABanner.tsx",
+            "components/sections/FAQ.tsx", "components/sections/Hero.tsx", "components/sections/Portfolio.tsx",
+            "components/sections/Pricing.tsx", "components/sections/Process.tsx", "components/sections/ServiceLandingPage.tsx",
+            "components/sections/Services.tsx", "components/sections/Stats.tsx", "components/sections/Testimonials.tsx",
+            "docs/GITHUB_ACTIONS_INSTALL.md", "docs/NEW_LAYOUT_DESIGN_SYSTEM.md", "docs/REFERENCE_CODE_REUSE.md",
+            "docs/reference/design-board.png", "lib/design-catalog.ts", "lib/theme-catalog.ts", "public/saad-monogram.png"
+          }
+          archive_path = Path("source/website-redesign-patch.zip")
+          with ZipFile(archive_path) as archive:
+            names = set(archive.namelist())
+            if names != expected:
+              raise SystemExit(f"ZIP manifest mismatch. Missing={sorted(expected-names)} Extra={sorted(names-expected)}")
+            for name in names:
+              p = Path(name)
+              if p.is_absolute() or ".." in p.parts:
+                raise SystemExit(f"Unsafe archive path: {name}")
+            archive.extractall("target")
+          print(f"Archive verified: {len(expected)} expected files.")
+          PY
+          cd target
+          node --check .redesign/apply-redesign.mjs
+          node .redesign/apply-redesign.mjs
+          rm -rf .redesign
+
+      - name: Verify 15 layouts, 15 palettes, public sections, admin styling, and protected data paths
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read = p => fs.readFileSync(p, 'utf8');
+          const layoutIds = [...read('lib/design-catalog.ts').matchAll(/\bid: "([a-z0-9-]+)"/g)].map(m => m[1]);
+          const paletteIds = [...read('lib/theme-catalog.ts').matchAll(/\bid: "([a-z0-9-]+)"/g)].map(m => m[1]);
+          if (layoutIds.length !== 15 || new Set(layoutIds).size !== 15) throw new Error(`Expected 15 unique layouts, found ${layoutIds.length}`);
+          if (paletteIds.length !== 15 || new Set(paletteIds).size !== 15) throw new Error(`Expected 15 unique palettes, found ${paletteIds.length}`);
+          const css = read('app/layout-designs.css');
+          const cssIds = [...css.matchAll(/html\[data-layout-design="([a-z0-9-]+)"\]/g)].map(m => m[1]);
+          if (layoutIds.some(id => !cssIds.includes(id))) throw new Error('Every layout must have dedicated composition CSS.');
+          const adminCss = read('app/admin-layout-designs.css');
+          if (layoutIds.some(id => !adminCss.includes(`data-layout-design=\"${id}\"`))) throw new Error('Every layout must have dashboard-specific composition CSS.');
+          if (!read('components/dashboard/DashboardFrame.tsx').includes('admin-design-shell')) throw new Error('Dashboard shell design hook missing.');
+          if (!read('components/dashboard/Sidebar.tsx').includes('admin-design-sidebar')) throw new Error('Dashboard sidebar design hook missing.');
+          if (!read('components/dashboard/TopBar.tsx').includes('admin-design-topbar')) throw new Error('Dashboard top bar design hook missing.');
+          const paletteCss = read('app/theme-versions.css');
+          if (paletteIds.some(id => !paletteCss.includes(`data-color-theme="${id}"`))) throw new Error('Every palette must have a dedicated color-token selector.');
+          const sections = {
+            'components/sections/Hero.tsx': 'redesign-hero',
+            'components/sections/Stats.tsx': 'redesign-stats',
+            'components/sections/About.tsx': 'redesign-about',
+            'components/sections/Services.tsx': 'redesign-services',
+            'components/sections/Process.tsx': 'redesign-process',
+            'components/sections/Pricing.tsx': 'redesign-pricing',
+            'components/sections/Portfolio.tsx': 'redesign-portfolio',
+            'components/sections/Testimonials.tsx': 'redesign-testimonials',
+            'components/sections/Blog.tsx': 'redesign-blog',
+            'components/sections/FAQ.tsx': 'redesign-faq',
+            'components/sections/Contact.tsx': 'redesign-contact'
+          };
+          for (const [file, marker] of Object.entries(sections)) if (!read(file).includes(marker)) throw new Error(`New section JSX marker missing: ${file}`);
+          if (read('components/sections/Portfolio.tsx').includes('Agentic Research Workspace')) throw new Error('Fabricated portfolio fallback was reintroduced.');
+          if (!read('components/redesign/MagneticSurface.tsx').includes('useReducedMotion')) throw new Error('Magnetic/parallax interaction must respect reduced-motion preferences.');
+          if (!read('components/sections/Portfolio.tsx').includes('ProjectModal') || !read('components/sections/Portfolio.tsx').includes('ProjectRailControls')) throw new Error('Reference-derived project modal/rail components are not integrated.');
+          if (!read('components/layouts/PublicComposition.tsx').includes('CTABanner') || !read('components/layouts/PublicComposition.tsx').includes('\"cta\"')) throw new Error('The newly authored CTA banner must be integrated into the homepage composition.');
+          if (!read('components/dashboard/blog/BlogEditor.tsx').includes('95_000_000')) throw new Error('Existing 95,000,000-byte inline video cap is missing.');
+          const oldIds = ['series-cinema','editorial-kinetic','bento-lab','gallery-immersive','neo-brutalist','quiet-luxury','terminal-noir','orbit-cards','split-screen','type-specimen','chromatic-glass','architect-grid','motion-poster','soft-depth','signal-dashboard','obsidian-crimson','midnight-emerald','ultraviolet-night','ocean-abyss','ivory-editorial','warm-sand','arctic-blue','sage-studio','lavender-mist','citrus-pop','cobalt-paper','terracotta','mono-ink'];
+          for (const file of ['types/index.ts','lib/site-defaults.ts','components/providers/ThemeProvider.tsx','app/dashboard/settings/page.tsx','app/theme-versions.css']) {
+            const content = read(file);
+            for (const id of oldIds) if (content.includes(`"${id}"`) || content.includes(`=${id}`)) throw new Error(`Legacy design ID ${id} remains active in ${file}`);
+          }
+          console.log(`Verified ${layoutIds.length} new compositions × ${paletteIds.length} independent palettes, all 11 new section JSX files, integrated rail/modal, and preserved video cap.`);
+          NODE
+
+      - name: Install dependencies
+        working-directory: target
+        run: npm install --package-lock=false --no-audit --no-fund
+
+      - name: TypeScript check
+        working-directory: target
+        run: npm run typecheck
+
+      - name: ESLint
+        working-directory: target
+        run: npm run lint
+
+      - name: Protect backend, authentication, and media upload paths
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          protected=(
+            "components/dashboard/blog/BlogEditor.tsx"
+            "lib/storage.ts"
+            "lib/admin-db.ts"
+            "proxy.ts"
+            "firestore.rules"
+            "firestore.indexes.json"
+          )
+          for path in "${protected[@]}"; do
+            if ! git diff --quiet -- "$path"; then
+              echo "Protected application path unexpectedly changed: $path"
+              exit 1
+            fi
+          done
+          grep -q '95_000_000' components/dashboard/blog/BlogEditor.tsx
+          echo "Backend/auth/media source files unchanged; inline video limit remains 95,000,000 bytes."
+
+      - name: Next.js production build
+        working-directory: target
+        env:
+          NEXT_PUBLIC_APP_URL: https://example.invalid
+          NEXT_PUBLIC_SITE_NAME: Build Verification
+          NEXT_PUBLIC_SITE_TAGLINE: Build Verification
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          for name in NEXT_PUBLIC_FIREBASE_API_KEY NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN NEXT_PUBLIC_FIREBASE_PROJECT_ID NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID NEXT_PUBLIC_FIREBASE_APP_ID FIREBASE_CLIENT_EMAIL FIREBASE_PRIVATE_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing GitHub Actions secret: $name. Add the repository's existing Firebase environment values before running the workflow. No changes have been pushed to main."
+              exit 1
+            fi
+          done
+          npm run build
+
+      - name: Commit the verified redesign to main
+        working-directory: target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git diff --cached --stat
+          git commit -m "Rebuild all public homepage sections and design compositions"
+          git push origin HEAD:main
