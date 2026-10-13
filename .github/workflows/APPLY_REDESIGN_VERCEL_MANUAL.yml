@@ -30,7 +30,7 @@ jobs:
           CONFIRM_APPLY: ${{ inputs.confirm_apply }}
         run: |
           set -euo pipefail
-          if [[ "$CONFIRM_APPLY" != "yes" ]]; then
+          if [[ "$CONFIRM_APPLY" != "yes" && "$CONFIRM_APPLY" != "true" ]]; then
             echo "Cancelled safely. Re-run this workflow and choose yes only when ready to apply the redesign."
             exit 1
           fi
