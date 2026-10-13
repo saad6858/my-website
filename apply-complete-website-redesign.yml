@@ -1,0 +1,137 @@
+name: Apply and verify complete website redesign
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type yes to apply the redesign, run checks, and commit to main"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: complete-website-redesign-main
+  cancel-in-progress: false
+
+jobs:
+  apply-verify-and-commit:
+    if: ${{ inputs.confirm == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Confirm the redesign archive exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f MY_WEBSITE_COMPLETE_REDESIGN.zip || {
+            echo "::error::Upload MY_WEBSITE_COMPLETE_REDESIGN.zip to the repository root on main first."
+            exit 1
+          }
+          command -v unzip >/dev/null
+          unzip -t MY_WEBSITE_COMPLETE_REDESIGN.zip
+
+      - name: Validate archive paths and extract overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import zipfile
+          archive = "MY_WEBSITE_COMPLETE_REDESIGN.zip"
+          with zipfile.ZipFile(archive) as z:
+              bad = []
+              for item in z.infolist():
+                  name = item.filename
+                  parts = name.replace("\\", "/").split("/")
+                  if name.startswith(("/", "\\")) or ".." in parts:
+                      bad.append(name)
+              if bad:
+                  raise SystemExit("Unsafe ZIP paths rejected: " + ", ".join(bad))
+              required = [
+                  ".redesign/apply-redesign.mjs",
+                  "lib/design-catalog.ts",
+                  "lib/theme-catalog.ts",
+                  "app/layout-designs.css",
+                  "app/admin-layout-designs.css",
+              ]
+              names = set(z.namelist())
+              missing = [name for name in required if name not in names]
+              if missing:
+                  raise SystemExit("Redesign ZIP is missing required files: " + ", ".join(missing))
+              z.extractall(".")
+          PY
+
+      - name: Apply redesign to existing application
+        run: node .redesign/apply-redesign.mjs
+
+      - name: Install pinned project dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: Check whitespace and patch integrity
+        run: git diff --check
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: ESLint check
+        run: npm run lint
+
+      - name: Production build
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SITE_NAME: ${{ secrets.NEXT_PUBLIC_SITE_NAME }}
+          NEXT_PUBLIC_SITE_TAGLINE: ${{ secrets.NEXT_PUBLIC_SITE_TAGLINE }}
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_UPLOAD_FOLDER: ${{ secrets.CLOUDINARY_UPLOAD_FOLDER }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_TO_EMAIL: ${{ secrets.RESEND_TO_EMAIL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: npm run build
+
+      - name: Remove uploaded patch archive from the commit
+        run: rm -f MY_WEBSITE_COMPLETE_REDESIGN.zip
+
+      - name: Commit and push only after every check passes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Apply complete public and admin website redesign"
+          git push origin HEAD:main
+
+      - name: Explain skipped confirmation
+        if: ${{ inputs.confirm != 'yes' }}
+        run: echo "No changes applied. Re-run the workflow and enter exactly yes to confirm."
