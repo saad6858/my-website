@@ -1,0 +1,446 @@
+name: Apply and verify complete public + admin redesign
+
+# Save this file in the repo as:  .github/workflows/apply-complete-redesign.yml
+#
+# What it does, in order:
+#   1. Finds MY_WEBSITE_COMPLETE_REDESIGN.zip in the repo and validates it
+#      (integrity, safe paths, allowed folders, required files, no secrets).
+#   2. Applies the ZIP to a fresh checkout and runs the ZIP's own apply script.
+#   3. Checks that only expected files changed (protected backend/auth/rules/API files untouched).
+#   4. Checks the 15 layouts + 15 palettes are consistent across types, catalogs and CSS.
+#   5. Installs dependencies, then runs TypeScript and ESLint.
+#   6. Only if every check passed AND mode = commit: commits and pushes to the branch.
+#
+# It deliberately does NOT run `next build` (that needs your environment secrets).
+# Nothing is pushed if any step fails.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "commit = apply, check, then commit to this branch. dry-run = apply and check only; nothing is pushed."
+        type: choice
+        default: commit
+        options:
+          - commit
+          - dry-run
+      zip_path:
+        description: "Path of the redesign ZIP inside the repo"
+        type: string
+        default: MY_WEBSITE_COMPLETE_REDESIGN.zip
+      skip_netlify_deploy:
+        description: "Add [skip netlify] to the commit message so the old Netlify site does not rebuild"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-complete-redesign
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ZIP_PATH_INPUT: ${{ inputs.zip_path }}
+      MODE: ${{ inputs.mode }}
+      SKIP_NETLIFY: ${{ inputs.skip_netlify_deploy }}
+      BRANCH: ${{ github.ref_name }}
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Locate ZIP and sanity-check the repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="${ZIP_PATH_INPUT:-MY_WEBSITE_COMPLETE_REDESIGN.zip}"
+          if [[ "$ZIP" == /* || "$ZIP" == *..* ]]; then
+            echo "::error::zip_path must be a relative path inside the repository."
+            exit 1
+          fi
+          if [ ! -f "$ZIP" ]; then
+            mapfile -t FOUND < <(find . -type f -name 'MY_WEBSITE_COMPLETE_REDESIGN.zip' -not -path './.git/*' | sed 's|^\./||')
+            if [ "${#FOUND[@]}" -ne 1 ]; then
+              echo "::error::Could not find the ZIP at '$ZIP' (${#FOUND[@]} matches elsewhere). Upload MY_WEBSITE_COMPLETE_REDESIGN.zip to the repository root on branch '$BRANCH' and run again."
+              exit 1
+            fi
+            ZIP="${FOUND[0]}"
+          fi
+          echo "Using ZIP: $ZIP"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+          for f in lib/design-catalog.ts lib/theme-catalog.ts; do
+            if [ -e "$f" ]; then
+              echo "::error::$f already exists, so the redesign looks already applied on this branch. Nothing was changed."
+              exit 1
+            fi
+          done
+
+          node -e '
+            const p = require("./package.json");
+            if (p.name !== "my-platform") throw new Error("Unexpected package name: " + p.name);
+            if (!String((p.dependencies || {}).next).startsWith("16.")) throw new Error("Expected Next.js 16, found " + (p.dependencies || {}).next);
+            const fa = (p.dependencies || {})["firebase-admin"];
+            if (fa !== "13.10.0") console.log("::warning::firebase-admin is " + fa + " (the known-good pin is 13.10.0).");
+            console.log("Repository looks right: " + p.name + ", next " + p.dependencies.next);
+          '
+
+      - name: Validate ZIP (integrity, safe paths, allowed folders, secrets)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, sys, stat, zipfile
+
+          zp = os.environ["ZIP"]
+          errors = []
+
+          REQUIRED = [
+              ".redesign/apply-redesign.mjs",
+              "lib/design-catalog.ts", "lib/theme-catalog.ts", "public/saad-monogram.png",
+              "components/sections/Hero.tsx", "components/sections/Stats.tsx", "components/sections/About.tsx",
+              "components/sections/Services.tsx", "components/sections/Process.tsx", "components/sections/Pricing.tsx",
+              "components/sections/Portfolio.tsx", "components/sections/Testimonials.tsx", "components/sections/Blog.tsx",
+              "components/sections/FAQ.tsx", "components/sections/Contact.tsx", "components/sections/CTABanner.tsx",
+              "components/redesign/DesignFrame.tsx", "components/redesign/MagneticSurface.tsx",
+              "components/layouts/PublicComposition.tsx",
+              "app/page.tsx", "app/layout-designs.css", "app/admin-layout-designs.css",
+              "app/services/page.tsx", "app/services/[slug]/page.tsx", "app/contact/page.tsx",
+              "app/portfolio/page.tsx", "app/blog/page.tsx", "app/blog/[slug]/page.tsx",
+          ]
+          ALLOWED_PREFIXES = (".redesign/", "app/", "components/", "docs/", "lib/", "public/")
+          ALLOWED_ROOT_FILES = {"README_REDESIGN.md"}
+          ONLY_THESE_IN = {
+              "lib/": {"lib/design-catalog.ts", "lib/theme-catalog.ts"},
+              "public/": {"public/saad-monogram.png"},
+          }
+          # The ZIP must never carry these: they are backend/auth/rules/config, or files the apply script patches itself.
+          FORBIDDEN = (
+              "app/api/", "app/dashboard/", "app/login/", "app/seed/", "app/forgot-password/",
+              "app/layout.tsx", "app/globals.css", "app/theme-versions.css",
+              "components/dashboard/", "components/providers/", "components/layout/",
+              "hooks/", "types/", ".github/", ".env", "proxy.ts", "firestore", "firebase",
+              "package", "next.config", "tsconfig", "tailwind.config", "postcss.config",
+              "netlify.toml", "vercel.json", "eslint.config", "next-env",
+          )
+          SECRET = re.compile(r"BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|sk_live_|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}")
+          BINARY_EXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico")
+
+          z = zipfile.ZipFile(zp)
+          bad = z.testzip()
+          if bad is not None:
+              errors.append("Corrupt entry in ZIP: " + bad)
+
+          names, total = [], 0
+          for info in z.infolist():
+              n = info.filename
+              if n.endswith("/"):
+                  continue
+              names.append(n)
+              total += info.file_size
+              parts = n.split("/")
+              if n.startswith("/") or "\\" in n or ".." in parts or re.match(r"^[A-Za-z]:", n):
+                  errors.append("Unsafe path: " + n)
+                  continue
+              mode = (info.external_attr >> 16) & 0o170000
+              if mode == stat.S_IFLNK:
+                  errors.append("Symlink not allowed: " + n)
+                  continue
+              if info.file_size > 10 * 1024 * 1024:
+                  errors.append("File too large (>10 MB): " + n)
+              if not (n in ALLOWED_ROOT_FILES or n.startswith(ALLOWED_PREFIXES)):
+                  errors.append("Not in an allowed location: " + n)
+                  continue
+              if n.startswith(FORBIDDEN):
+                  errors.append("Protected path must not be in the ZIP: " + n)
+              for prefix, allowed in ONLY_THESE_IN.items():
+                  if n.startswith(prefix) and n not in allowed:
+                      errors.append("Unexpected file in " + prefix + ": " + n)
+              if not n.lower().endswith(BINARY_EXT):
+                  text = z.read(n).decode("utf-8", errors="ignore")
+                  if SECRET.search(text):
+                      errors.append("Possible secret/credential inside: " + n)
+
+          for r in REQUIRED:
+              if r not in names:
+                  errors.append("Required file missing from ZIP: " + r)
+          if total > 20 * 1024 * 1024:
+              errors.append("ZIP expands to more than 20 MB")
+
+          print("ZIP entries: %d files, %d bytes uncompressed" % (len(names), total))
+          if errors:
+              for e in errors:
+                  print("::error::" + e)
+              sys.exit(1)
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "zip-manifest.txt"), "w") as f:
+              f.write("\n".join(names) + "\n")
+          print("ZIP validation passed.")
+          PY
+
+      - name: Apply the redesign
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -q -o "$ZIP" -d .
+          test -f .redesign/apply-redesign.mjs
+          node .redesign/apply-redesign.mjs
+          # The apply script is a one-time installer; it is not committed.
+          rm -rf .redesign
+          # Stage now, before dependency install, so only intended files are ever committed.
+          git add -A
+          git diff --cached --name-status > "$RUNNER_TEMP/changes.txt"
+          echo "Staged changes:"
+          cat "$RUNNER_TEMP/changes.txt"
+
+      - name: Check that only expected files changed (protected-path guard)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, subprocess, sys
+
+          # Files the ZIP's apply script is known to patch in place (read from the script).
+          PATCHED = {
+              "types/index.ts", "lib/site-defaults.ts", "components/providers/ThemeProvider.tsx",
+              "app/dashboard/settings/page.tsx", "app/theme-versions.css", "app/layout.tsx",
+              "components/dashboard/DashboardFrame.tsx", "components/dashboard/Sidebar.tsx",
+              "components/dashboard/TopBar.tsx", "components/layout/Navbar.tsx", "components/layout/Footer.tsx",
+              "eslint.config.mjs", "vercel.json", ".gitignore",
+              "README.md", "WEBSITE_HANDOFF.md", "DESIGN_VERSIONS.md", "SETUP_AND_DEPLOYMENT.md",
+              "RESEARCH_AND_ARCHITECTURE.md", "SPEC_RECONCILIATION.md", "COMPATIBILITY_FIX.md", "VERIFICATION_REPORT.md",
+          }
+          ALLOWED_DELETIONS = {"netlify.toml"}
+
+          manifest = set(open(os.path.join(os.environ["RUNNER_TEMP"], "zip-manifest.txt")).read().split("\n")) - {""}
+          manifest = {n for n in manifest if not n.startswith(".redesign/")}
+
+          raw = subprocess.check_output(["git", "diff", "--cached", "--name-status", "-z"]).decode("utf-8")
+          tok = [t for t in raw.split("\0") if t != ""]
+          changes, i = [], 0
+          while i < len(tok):
+              status = tok[i]
+              if status[0] in "RC":
+                  changes.append((status, tok[i + 1], tok[i + 2])); i += 3
+              else:
+                  changes.append((status, tok[i + 1], None)); i += 2
+
+          errors = []
+          for status, path, other in changes:
+              if status[0] in "RC":
+                  errors.append("Rename/copy not expected: %s -> %s" % (path, other))
+              elif status == "D":
+                  if path not in ALLOWED_DELETIONS:
+                      errors.append("Unexpected deletion: " + path)
+              elif path not in manifest and path not in PATCHED:
+                  errors.append("Unexpected file changed: " + path)
+
+          for n in sorted(manifest):
+              if not os.path.exists(n):
+                  errors.append("Expected file missing after apply: " + n)
+          if not os.path.exists("vercel.json"):
+              errors.append("vercel.json was not created")
+          if os.path.exists("netlify.toml"):
+              errors.append("netlify.toml still exists after apply")
+
+          print("%d staged changes" % len(changes))
+          if errors:
+              for e in errors:
+                  print("::error::" + e)
+              sys.exit(1)
+          print("Protected-path guard passed: backend, API routes, auth, rules and package files are untouched.")
+          PY
+
+      - name: Scan staged changes for secrets and risky patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --cached -U0 --text | grep -E '^\+' | grep -Ev '^\+\+\+' > "$RUNNER_TEMP/added-lines.txt" || true
+          if grep -En 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|sk_live_|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}' "$RUNNER_TEMP/added-lines.txt"; then
+            echo "::error::Possible secret found in the changes above. Nothing was pushed."
+            exit 1
+          fi
+          # Warnings only: review these, they do not block.
+          if grep -En 'dangerouslySetInnerHTML|[^a-zA-Z.]eval\(|new Function\(|console\.log' "$RUNNER_TEMP/added-lines.txt"; then
+            echo "::warning::Added lines contain dangerouslySetInnerHTML, eval, new Function or console.log (listed in the log). Review them."
+          else
+            echo "No risky patterns in added lines."
+          fi
+
+      - name: Design system consistency checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs = require("fs");
+          const path = require("path");
+          const read = (f) => fs.readFileSync(f, "utf8");
+          const errors = [];
+          const warnings = [];
+          const fail = (m) => errors.push(m);
+
+          const idsOf = (src) => [...src.matchAll(/\bid:\s*"([a-z0-9-]+)"/g)].map((m) => m[1]);
+          const layouts = idsOf(read("lib/design-catalog.ts"));
+          const themes = idsOf(read("lib/theme-catalog.ts"));
+          for (const [name, list] of [["layout catalog", layouts], ["theme catalog", themes]]) {
+            if (list.length !== 15 || new Set(list).size !== 15) fail(name + ": expected exactly 15 unique ids, got " + list.length + " (" + new Set(list).size + " unique)");
+          }
+
+          const types = read("types/index.ts");
+          const unionIds = (name) => {
+            const m = types.match(new RegExp("^export type " + name + " = (.*);$", "m"));
+            if (!m) { fail("types/index.ts: missing export type " + name); return []; }
+            return [...m[1].matchAll(/"([a-z0-9-]+)"/g)].map((x) => x[1]);
+          };
+          const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+          if (!same(unionIds("LayoutDesign"), layouts)) fail("types/index.ts LayoutDesign does not match lib/design-catalog.ts");
+          if (!same(unionIds("ColorTheme"), themes)) fail("types/index.ts ColorTheme does not match lib/theme-catalog.ts");
+          if (!/^export type SiteVersion = string;/m.test(types)) fail("types/index.ts: SiteVersion should now be a plain string (legacy field)");
+
+          const defaultsSrc = read("lib/site-defaults.ts");
+          if (!defaultsSrc.includes("DEFAULT_LAYOUT_DESIGN") || !defaultsSrc.includes("DEFAULT_COLOR_THEME")) fail("lib/site-defaults.ts does not use the new default constants");
+          const defLayout = read("lib/design-catalog.ts").match(/DEFAULT_LAYOUT_DESIGN[^=]*=\s*"([a-z0-9-]+)"/);
+          const defTheme = read("lib/theme-catalog.ts").match(/DEFAULT_COLOR_THEME[^=]*=\s*"([a-z0-9-]+)"/);
+          if (!defLayout || !layouts.includes(defLayout[1])) fail("DEFAULT_LAYOUT_DESIGN is not a catalog id");
+          if (!defTheme || !themes.includes(defTheme[1])) fail("DEFAULT_COLOR_THEME is not a catalog id");
+
+          const publicCss = read("app/layout-designs.css");
+          const adminCss = read("app/admin-layout-designs.css");
+          for (const id of layouts) {
+            const sel = 'data-layout-design="' + id + '"';
+            if (!publicCss.includes(sel)) fail("app/layout-designs.css has no rules for layout " + id);
+            if (!adminCss.includes(sel)) fail("app/admin-layout-designs.css has no rules for layout " + id);
+          }
+          const paletteCss = read("app/theme-versions.css");
+          for (const id of themes) {
+            if (!paletteCss.includes('data-color-theme="' + id + '"')) fail("app/theme-versions.css has no palette rules for " + id);
+          }
+
+          const layoutTsx = read("app/layout.tsx");
+          for (const css of ["./layout-designs.css", "./admin-layout-designs.css", "./theme-versions.css"]) {
+            if (!layoutTsx.includes(css)) fail("app/layout.tsx does not import " + css);
+          }
+          const provider = read("components/providers/ThemeProvider.tsx");
+          if (!provider.includes("isColorTheme") || !provider.includes("isLayoutDesign")) fail("ThemeProvider does not validate saved theme/layout ids");
+
+          const sections = fs.readdirSync("components/sections").filter((f) => f.endsWith(".tsx")).map((f) => read(path.join("components/sections", f))).join("\n");
+          for (const n of ["hero", "stats", "about", "services", "process", "pricing", "portfolio", "testimonials", "blog", "faq", "contact"]) {
+            if (!sections.includes("redesign-" + n)) fail("Homepage section marker missing: redesign-" + n);
+          }
+          for (const f of ["components/layout/Navbar.tsx", "components/layout/Footer.tsx"]) {
+            if (!read(f).includes("/saad-monogram.png")) fail(f + " does not use the new monogram");
+          }
+          const png = fs.readFileSync("public/saad-monogram.png").subarray(0, 8).toString("hex");
+          if (png !== "89504e470d0a1a0a") fail("public/saad-monogram.png is not a valid PNG");
+
+          // Old ids must not linger where behaviour depends on them (saving settings, validation, defaults).
+          const OLD = [
+            "series-cinema", "editorial-kinetic", "bento-lab", "gallery-immersive", "neo-brutalist", "quiet-luxury",
+            "terminal-noir", "orbit-cards", "split-screen", "type-specimen", "chromatic-glass", "architect-grid",
+            "motion-poster", "soft-depth", "signal-dashboard",
+            "obsidian-crimson", "midnight-emerald", "ultraviolet-night", "ocean-abyss", "graphite-amber",
+            "ivory-editorial", "warm-sand", "arctic-blue", "sage-studio", "rose-quartz", "lavender-mist",
+            "citrus-pop", "cobalt-paper", "terracotta", "mono-ink",
+          ].filter((id) => !layouts.includes(id) && !themes.includes(id));
+          const walk = (dir, out) => {
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== ".next") walk(p, out); }
+              else if (/\.(ts|tsx|js|jsx|mjs|css)$/.test(e.name)) out.push(p);
+            }
+            return out;
+          };
+          const files = ["app", "components", "lib", "hooks", "types"].filter((d) => fs.existsSync(d)).flatMap((d) => walk(d, []));
+          for (const f of files) {
+            const lines = read(f).split("\n");
+            lines.forEach((line, i) => {
+              for (const id of OLD) {
+                if (new RegExp("(?<![A-Za-z0-9-])" + id + "(?![A-Za-z0-9-])").test(line)) {
+                  const msg = f + ":" + (i + 1) + " still mentions retired id '" + id + "'";
+                  if (f.startsWith("app/api/") || f.startsWith("lib/")) fail(msg); else warnings.push(msg);
+                }
+              }
+            });
+          }
+
+          warnings.slice(0, 40).forEach((w) => console.log("::warning::" + w));
+          if (warnings.length > 40) console.log("::warning::...and " + (warnings.length - 40) + " more retired-id mentions");
+          if (errors.length) { errors.forEach((e) => console.log("::error::" + e)); process.exit(1); }
+          console.log("Design checks passed: " + layouts.length + " layouts, " + themes.length + " palettes, types/CSS/catalogs consistent.");
+          JS
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            echo "No package-lock.json in the repo; installing from package.json without creating a lockfile."
+            npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+          fi
+
+      - name: Generate Next.js route types (no build)
+        shell: bash
+        run: |
+          npx --no-install next typegen || echo "::warning::next typegen was not available; continuing with typecheck."
+
+      - name: TypeScript check
+        shell: bash
+        run: npx --no-install tsc --noEmit
+
+      - name: ESLint
+        shell: bash
+        run: npx --no-install eslint .
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$MODE" != "commit" ]; then
+            echo "Dry run: every check passed, nothing was committed or pushed."
+            exit 0
+          fi
+          if git diff --cached --quiet; then
+            echo "::error::Nothing staged to commit."
+            exit 1
+          fi
+          MSG="Apply complete public + admin redesign (15 layouts x 15 palettes)"
+          if [ "$SKIP_NETLIFY" = "true" ]; then
+            MSG="$MSG [skip netlify]"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "$MSG" -m "Applied from $ZIP. Checks passed: ZIP validation, protected-path guard, secret scan, design consistency, TypeScript, ESLint. Production build was not run in CI."
+          git push origin "HEAD:refs/heads/${BRANCH}"
+          echo "Pushed $(git rev-parse --short HEAD) to ${BRANCH}."
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Redesign workflow"
+            echo ""
+            echo "- Mode: ${MODE}"
+            echo "- Branch: ${BRANCH}"
+            echo "- ZIP: ${ZIP:-not located}"
+            echo "- Production build: not run (by design)"
+            if [ -f "$RUNNER_TEMP/changes.txt" ]; then
+              echo ""
+              echo "### Staged changes (A=added, M=modified, D=deleted)"
+              echo '```'
+              cat "$RUNNER_TEMP/changes.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
