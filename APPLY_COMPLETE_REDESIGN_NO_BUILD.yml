@@ -1,0 +1,228 @@
+name: Apply and verify complete website redesign (no production build)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_apply:
+        description: Type yes to apply the repository ZIP, verify it, and commit the result to main
+        required: true
+        type: choice
+        options:
+          - no
+          - yes
+        default: no
+
+permissions:
+  contents: write
+
+concurrency:
+  group: complete-site-redesign
+  cancel-in-progress: false
+
+jobs:
+  apply-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Require explicit confirmation
+        shell: bash
+        env:
+          CONFIRM_APPLY: ${{ inputs.confirm_apply }}
+        run: |
+          set -euo pipefail
+          if [[ "$CONFIRM_APPLY" != "yes" ]]; then
+            echo "Cancelled safely. Re-run this workflow and choose yes to apply the redesign."
+            exit 1
+          fi
+
+      - name: Check out ZIP source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          path: source
+          token: ${{ github.token }}
+
+      - name: Check out current production main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: target
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Validate the exact repository ZIP and apply it
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/MY_WEBSITE_COMPLETE_REDESIGN.zip || {
+            echo "Missing MY_WEBSITE_COMPLETE_REDESIGN.zip on the selected source branch."
+            exit 1
+          }
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, BadZipFile
+          import stat
+
+          expected = {
+            ".redesign/apply-redesign.mjs", "README_REDESIGN.md",
+            "app/layout-designs.css", "app/admin-layout-designs.css", "app/page.tsx",
+            "app/services/[slug]/page.tsx", "app/services/page.tsx",
+            "app/services/ai-chatbots/page.tsx",
+            "app/services/appointment-automation/page.tsx",
+            "app/services/customer-support-automation/page.tsx",
+            "app/contact/page.tsx", "app/portfolio/page.tsx",
+            "app/blog/page.tsx", "app/blog/[slug]/page.tsx",
+            "components/layouts/PublicComposition.tsx",
+            "components/redesign/DesignFrame.tsx",
+            "components/redesign/MagneticSurface.tsx",
+            "components/portfolio/ProjectModal.tsx",
+            "components/portfolio/ProjectRailControls.tsx",
+            "components/sections/About.tsx", "components/sections/Blog.tsx",
+            "components/sections/Contact.tsx", "components/sections/CTABanner.tsx",
+            "components/sections/FAQ.tsx", "components/sections/Hero.tsx",
+            "components/sections/Portfolio.tsx", "components/sections/Pricing.tsx",
+            "components/sections/Process.tsx", "components/sections/ServiceLandingPage.tsx",
+            "components/sections/Services.tsx", "components/sections/Stats.tsx",
+            "components/sections/Testimonials.tsx",
+            "docs/GITHUB_ACTIONS_INSTALL.md", "docs/NEW_LAYOUT_DESIGN_SYSTEM.md",
+            "docs/REFERENCE_CODE_REUSE.md", "docs/reference/design-board.png",
+            "lib/design-catalog.ts", "lib/theme-catalog.ts", "public/saad-monogram.png"
+          }
+          archive_path = Path("source/MY_WEBSITE_COMPLETE_REDESIGN.zip")
+          try:
+              with ZipFile(archive_path) as archive:
+                  infos = archive.infolist()
+                  names_list = [item.filename for item in infos]
+                  names = set(names_list)
+                  if len(names_list) != len(names):
+                      raise SystemExit("ZIP contains duplicate paths.")
+                  if names != expected:
+                      raise SystemExit(
+                          f"ZIP manifest mismatch. Missing={sorted(expected-names)} "
+                          f"Extra={sorted(names-expected)}"
+                      )
+                  bad_member = archive.testzip()
+                  if bad_member:
+                      raise SystemExit(f"ZIP CRC/integrity check failed at: {bad_member}")
+                  for item in infos:
+                      path = Path(item.filename)
+                      if path.is_absolute() or ".." in path.parts or "\\" in item.filename:
+                          raise SystemExit(f"Unsafe archive path: {item.filename}")
+                      mode = item.external_attr >> 16
+                      if stat.S_ISLNK(mode):
+                          raise SystemExit(f"Symbolic links are not allowed in the ZIP: {item.filename}")
+                      if item.file_size > 2_000_000:
+                          raise SystemExit(f"Unexpectedly large ZIP member: {item.filename}")
+                  archive.extractall("target")
+          except BadZipFile as exc:
+              raise SystemExit(f"Invalid ZIP archive: {exc}")
+          print(f"ZIP verified: {len(expected)} expected files, no duplicate/unsafe paths, CRC passed.")
+          PY
+          cd target
+          node --check .redesign/apply-redesign.mjs
+          node .redesign/apply-redesign.mjs
+          rm -rf .redesign
+
+      - name: Verify layout, palette, public sections, and admin integration
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read = p => fs.readFileSync(p, 'utf8');
+          const layoutIds = [...read('lib/design-catalog.ts').matchAll(/\bid: "([a-z0-9-]+)"/g)].map(m => m[1]);
+          const paletteIds = [...read('lib/theme-catalog.ts').matchAll(/\bid: "([a-z0-9-]+)"/g)].map(m => m[1]);
+          if (layoutIds.length !== 15 || new Set(layoutIds).size !== 15) throw new Error(`Expected 15 unique layouts, found ${layoutIds.length}`);
+          if (paletteIds.length !== 15 || new Set(paletteIds).size !== 15) throw new Error(`Expected 15 unique palettes, found ${paletteIds.length}`);
+          const css = read('app/layout-designs.css');
+          if (layoutIds.some(id => !css.includes(`data-layout-design="${id}"`))) throw new Error('A public layout CSS selector is missing.');
+          const adminCss = read('app/admin-layout-designs.css');
+          if (layoutIds.some(id => !adminCss.includes(`data-layout-design="${id}"`))) throw new Error('A dashboard layout CSS selector is missing.');
+          const paletteCss = read('app/theme-versions.css');
+          if (paletteIds.some(id => !paletteCss.includes(`data-color-theme="${id}"`))) throw new Error('A palette CSS selector is missing.');
+          if (!read('components/dashboard/DashboardFrame.tsx').includes('admin-design-shell')) throw new Error('Dashboard shell design hook missing.');
+          if (!read('components/dashboard/Sidebar.tsx').includes('admin-design-sidebar')) throw new Error('Dashboard sidebar design hook missing.');
+          if (!read('components/dashboard/TopBar.tsx').includes('admin-design-topbar')) throw new Error('Dashboard top bar design hook missing.');
+          const sections = {
+            'components/sections/Hero.tsx': 'redesign-hero',
+            'components/sections/Stats.tsx': 'redesign-stats',
+            'components/sections/About.tsx': 'redesign-about',
+            'components/sections/Services.tsx': 'redesign-services',
+            'components/sections/Process.tsx': 'redesign-process',
+            'components/sections/Pricing.tsx': 'redesign-pricing',
+            'components/sections/Portfolio.tsx': 'redesign-portfolio',
+            'components/sections/Testimonials.tsx': 'redesign-testimonials',
+            'components/sections/Blog.tsx': 'redesign-blog',
+            'components/sections/FAQ.tsx': 'redesign-faq',
+            'components/sections/Contact.tsx': 'redesign-contact'
+          };
+          for (const [file, marker] of Object.entries(sections)) {
+            if (!read(file).includes(marker)) throw new Error(`Public section marker missing: ${file}`);
+          }
+          if (read('components/sections/Portfolio.tsx').includes('Agentic Research Workspace')) throw new Error('Fabricated portfolio fallback found.');
+          if (!read('components/redesign/MagneticSurface.tsx').includes('useReducedMotion')) throw new Error('Reduced-motion support missing.');
+          if (!read('components/sections/Portfolio.tsx').includes('ProjectModal') || !read('components/sections/Portfolio.tsx').includes('ProjectRailControls')) throw new Error('Portfolio modal/rail integration missing.');
+          if (!read('components/layouts/PublicComposition.tsx').includes('CTABanner')) throw new Error('CTA banner is not integrated.');
+          if (!read('components/dashboard/blog/BlogEditor.tsx').includes('95_000_000')) throw new Error('Existing inline video upload cap changed or missing.');
+          console.log(`Verified ${layoutIds.length} layouts × ${paletteIds.length} palettes and public/admin integration.`);
+          NODE
+
+      - name: Protect backend, authentication, and media upload paths
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          protected=(
+            "components/dashboard/blog/BlogEditor.tsx"
+            "lib/storage.ts"
+            "lib/admin-db.ts"
+            "proxy.ts"
+            "firestore.rules"
+            "firestore.indexes.json"
+          )
+          for path in "${protected[@]}"; do
+            if ! git diff --quiet -- "$path"; then
+              echo "Protected application path unexpectedly changed: $path"
+              exit 1
+            fi
+          done
+          grep -q '95_000_000' components/dashboard/blog/BlogEditor.tsx
+          echo "Protected backend/auth/media paths are unchanged."
+
+      - name: Install dependencies
+        working-directory: target
+        run: npm install --package-lock=false --no-audit --no-fund
+
+      - name: TypeScript check
+        working-directory: target
+        run: npm run typecheck
+
+      - name: ESLint changed TypeScript files only
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed_ts < <(git diff --name-only --diff-filter=ACMR -- '*.ts' '*.tsx')
+          if ((${#changed_ts[@]} == 0)); then
+            echo "No changed TypeScript files to lint."
+            exit 0
+          fi
+          printf 'Linting %s changed TypeScript files\n' "${#changed_ts[@]}"
+          npx eslint "${changed_ts[@]}"
+
+      - name: Commit verified redesign to main
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git diff --cached --stat
+          git commit -m "Apply verified public and admin redesign"
+          git push origin HEAD:main
