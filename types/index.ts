@@ -2,9 +2,9 @@ import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type DateLike = Date | Timestamp | FieldValue;
 
-export type SiteVersion = "v1-dark" | "v2-paper" | "v3-swiss" | "v4-studio" | "v5-blueprint";
-export type LayoutDesign = "series-cinema" | "editorial-kinetic" | "bento-lab" | "gallery-immersive" | "neo-brutalist" | "quiet-luxury" | "terminal-noir" | "orbit-cards" | "split-screen" | "type-specimen" | "chromatic-glass" | "architect-grid" | "motion-poster" | "soft-depth" | "signal-dashboard";
-export type ColorTheme = "obsidian-crimson" | "midnight-emerald" | "ultraviolet-night" | "ocean-abyss" | "graphite-amber" | "ivory-editorial" | "warm-sand" | "arctic-blue" | "sage-studio" | "rose-quartz" | "lavender-mist" | "citrus-pop" | "cobalt-paper" | "terracotta" | "mono-ink";
+export type SiteVersion = string; // Legacy Firestore field only; no longer a selectable frontend design.
+export type LayoutDesign = "cinema-index" | "editorial-asymmetric" | "swiss-grid" | "bento-studio" | "split-canvas" | "modern-brutalist" | "monochrome-minimal" | "terminal-builder" | "horizontal-showcase" | "story-timeline" | "case-study-gallery" | "digital-magazine" | "service-first-studio" | "visual-mosaic" | "launchpad-constellation";
+export type ColorTheme = "cinema-crimson" | "obsidian-emerald" | "midnight-sapphire" | "eclipse-violet" | "graphite-amber" | "deep-ocean" | "noir-monochrome" | "ivory-forest" | "editorial-sand" | "sage-cream" | "lavender-paper" | "terracotta-sunset" | "rose-quartz" | "electric-pop" | "arctic-bloom";
 
 export type LeadSource = "zameen" | "facebook" | "instagram" | "referral" | "website" | "linkedin" | "other";
 export type LeadStatus = "new" | "contacted" | "replied" | "sample_sent" | "negotiating" | "converted" | "lost" | "follow_up";

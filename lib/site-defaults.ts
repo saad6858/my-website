@@ -1,4 +1,6 @@
 import type { SiteSettings } from "@/types";
+import { DEFAULT_COLOR_THEME } from "@/lib/theme-catalog";
+import { DEFAULT_LAYOUT_DESIGN } from "@/lib/design-catalog";
 
 export const defaultSiteSettings: SiteSettings = {
   id: "main",
@@ -23,8 +25,8 @@ export const defaultSiteSettings: SiteSettings = {
   },
   appearance: {
     accentColor: "#e5132b",
-    layoutDesign: "series-cinema",
-    colorTheme: "obsidian-crimson",
+    layoutDesign: DEFAULT_LAYOUT_DESIGN,
+    colorTheme: DEFAULT_COLOR_THEME,
     fontFamily: "Inter",
     enableCustomCursor: true,
     enableParticles: true,

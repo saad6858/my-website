@@ -36,3 +36,7 @@ After the first Netlify deployment, verify authentication, `/seed`, public conte
 - Firebase Admin SDK 14.5.0
 - Recharts 3.10.1
 - Node engine: >=20.9.0 <25; deployment guide recommends Node 24 on Netlify.
+
+## Deployment platform update (2026-10-13)
+
+This file contains historical Netlify-specific research or incident notes. They are not the current deployment instructions. The current deployment target is **Vercel**; follow `SETUP_AND_DEPLOYMENT.md`, use the repository's `vercel.json`, and configure environment variables in Vercel Project Settings. The redesign patch removes the obsolete `netlify.toml`. Account linking, domains, Firebase authorized domains, and environment variables must still be configured in their respective consoles.

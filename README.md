@@ -18,9 +18,14 @@ The project combines a public personal site, portfolio, blog/CMS, CRM, project p
 - Lucide React 1.48.0
 - react-markdown + remark-gfm
 - Optional Resend email integration
-- Netlify deployment
+- Vercel deployment
 
 ## Major capabilities
+
+## Current public redesign
+
+The public homepage section JSX is newly implemented in `components/sections/`. Layout composition is managed in `lib/design-catalog.ts`; the 15 independent palettes are managed in `lib/theme-catalog.ts`. The authenticated dashboard now shares those same 15 composition choices and 15 palettes, with dashboard-specific styling in `app/admin-layout-designs.css`. Dashboard data/auth logic is preserved. See `docs/NEW_LAYOUT_DESIGN_SYSTEM.md` and `docs/REFERENCE_CODE_REUSE.md`.
+
 
 ### Public
 
@@ -78,8 +83,8 @@ The intended setup path does not require Codespaces or a local computer.
 1. Upload this repository to GitHub.
 2. Create/configure Firebase.
 3. Create Cloudinary.
-4. Import the repository into Netlify.
-5. Add the environment variables in Netlify.
+4. Import the repository into Vercel.
+5. Add the environment variables in Vercel Project Settings.
 6. Create the Firebase admin account matching `ADMIN_EMAIL`.
 7. Deploy.
 8. Sign in at `/login`.
@@ -160,9 +165,9 @@ Cloudinary secrets are server-side only.
 
 ## Deployment
 
-Use Netlify's normal Next.js deployment mode. Do not configure a static export. Netlify's current Next.js integration uses its OpenNext adapter and supports App Router, SSR, Route Handlers, Server Actions, and Middleware.
+Deploy this as a normal dynamic Next.js application on Vercel. Let Vercel detect the Next.js framework; do not configure a static export or a custom output directory. Configure all required public and server environment variables in Vercel Project Settings before deploying.
 
-The Free plan is suitable for a small low-traffic commercial site, but it has a 300-credit monthly allowance; when the credits are exhausted, projects can pause until the next cycle. Keep an eye on usage as traffic grows.
+Choose a Vercel plan that fits the site's actual business use and expected traffic. Verify the current plan terms and usage limits in Vercel before production deployment; do not assume a free tier permits commercial use.
 
 ## Contribution / future changes
 

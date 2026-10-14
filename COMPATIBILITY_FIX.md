@@ -11,3 +11,7 @@ Firebase Admin v13.10.0 uses `jwks-rsa` 3.1.x instead of the v14 dependency line
 No Firebase environment variables, authentication data, UI components, theme files, dashboard files, Firestore rules, Cloudinary configuration, or application logic are changed by this patch.
 
 After this overlay is installed and Netlify redeploys, test `/login` again before changing any other configuration.
+
+## Deployment platform update (2026-10-13)
+
+This file contains historical Netlify-specific research or incident notes. They are not the current deployment instructions. The current deployment target is **Vercel**; follow `SETUP_AND_DEPLOYMENT.md`, use the repository's `vercel.json`, and configure environment variables in Vercel Project Settings. The redesign patch removes the obsolete `netlify.toml`. Account linking, domains, Firebase authorized domains, and environment variables must still be configured in their respective consoles.

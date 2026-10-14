@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "./theme-versions.css";
+import "./layout-designs.css";
+import "./admin-layout-designs.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { SiteSettingsProvider } from "@/components/providers/SiteSettingsProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";

@@ -260,3 +260,7 @@ The supplied 14-chunk specification remains the feature blueprint, but these cha
 - Firebase Cloud Storage billing change: https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
 - Firebase Admin session cookies: https://firebase.google.com/docs/auth/admin/manage-cookies
 - GitHub Student Developer Pack: https://education.github.com/pack
+
+## Deployment platform update (2026-10-13)
+
+This file contains historical Netlify-specific research or incident notes. They are not the current deployment instructions. The current deployment target is **Vercel**; follow `SETUP_AND_DEPLOYMENT.md`, use the repository's `vercel.json`, and configure environment variables in Vercel Project Settings. The redesign patch removes the obsolete `netlify.toml`. Account linking, domains, Firebase authorized domains, and environment variables must still be configured in their respective consoles.

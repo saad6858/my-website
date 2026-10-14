@@ -39,3 +39,7 @@ The source's Codespaces/Gemini execution sequence was replaced with the user's d
 ## Known verification boundary
 
 Static parsing, internal import resolution, configuration JSON parsing, stale-feature scanning, and placeholder scanning were completed successfully. A real dependency install and production build were **not** completed inside this execution environment because npm registry access timed out. The setup guide therefore treats the first Netlify build as the authoritative environment-level dependency/build verification and lists the exact post-deploy checks.
+
+## Deployment platform update (2026-10-13)
+
+This file contains historical Netlify-specific research or incident notes. They are not the current deployment instructions. The current deployment target is **Vercel**; follow `SETUP_AND_DEPLOYMENT.md`, use the repository's `vercel.json`, and configure environment variables in Vercel Project Settings. The redesign patch removes the obsolete `netlify.toml`. Account linking, domains, Firebase authorized domains, and environment variables must still be configured in their respective consoles.

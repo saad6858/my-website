@@ -1,19 +1,21 @@
 # MY WEBSITE — Engineering & Content Handoff
 
-Last updated: 2026-10-11. Production platform: Next.js App Router 16, React 19, Netlify, Firebase Authentication/Firestore, Cloudinary signed uploads.
+Last updated: 2026-10-11. Production platform: Next.js App Router 16, React 19, Vercel, Firebase Authentication/Firestore, Cloudinary signed uploads.
 
 ## Non-negotiable project boundaries
-- Preserve Firebase authentication, server-side authorization, Firestore data, CMS, admin dashboard, SEO, Netlify deployment, and Cloudinary signed uploads. The reference repository is a standalone Vite portfolio, not a backend replacement.
+- Preserve Firebase authentication, server-side authorization, Firestore data, CMS, admin dashboard, SEO, Vercel deployment, and Cloudinary signed uploads. The reference repository is a standalone Vite portfolio, not a backend replacement.
 - The abandoned real-estate AI/property-video generator is not a website service and must not be restored unless explicitly requested.
 - Never invent biography, customer results, credentials, dates, clients, or portfolio outcomes. Keep copy editable and truthful.
 - Themes apply globally to the public website and admin dashboard. Visitors cannot switch the owner's design settings.
 
 ## Design system
-- 15 layout systems live in `appearance.layoutDesign`: series-cinema, editorial-kinetic, bento-lab, gallery-immersive, neo-brutalist, quiet-luxury, terminal-noir, orbit-cards, split-screen, type-specimen, chromatic-glass, architect-grid, motion-poster, soft-depth, signal-dashboard.
-- 15 independent color palettes live in `appearance.colorTheme`: obsidian-crimson, midnight-emerald, ultraviolet-night, ocean-abyss, graphite-amber, ivory-editorial, warm-sand, arctic-blue, sage-studio, rose-quartz, lavender-mist, citrus-pop, cobalt-paper, terracotta, mono-ink. Any layout can pair with any palette. Five palettes are dark and ten are light.
-- `app/theme-versions.css` maps palette variables and layout modifiers. `ThemeProvider` writes `data-color-theme` and `data-layout-design` on `<html>`. `app/dashboard/settings/page.tsx` owns the admin selector. Add a new option to the TypeScript union, default setting, selector, and CSS mapping together.
-- Motion inspiration adapted from `Sushmitadasari/Portfolio_series`: cinematic intro timing, staggered/blur-to-focus entrances, magnetic/labeled cursor states, parallax language, cinematic grain/light streaks, and Lenis smooth scrolling. We do not copy the reference person's biography, photos, resume, project data, or branding.
-- Accessibility: intro is session-only and skippable; it is skipped for `prefers-reduced-motion`; cursor is disabled on touch/small screens/reduced-motion; native content remains usable without cursor effects.
+- The public homepage JSX is newly implemented across Hero, Stats, About, Services, Process, Pricing, Portfolio, Testimonials, Blog, FAQ, and Contact.
+- The standalone Services, Portfolio, Blog archive/article, and Contact pages have also been rebuilt with the same visual language.
+- Layout catalog: lib/design-catalog.ts — 15 distinct compositions. Palette catalog: lib/theme-catalog.ts — 15 independent color palettes.
+- Composition styling lives in app/layout-designs.css; palette tokens live in app/theme-versions.css. Any palette can be combined with any composition.
+- The authenticated admin dashboard shares the selected composition and palette through the same document-level tokens, with dashboard-specific rules in app/admin-layout-designs.css and explicit shell/sidebar/top-bar hooks. CRM, analytics, settings, blog CMS, and media-management data flows remain unchanged.
+- The portfolio displays published entries only; the testimonial section does not fabricate client quotes. Keep all published claims factual.
+- Reference rail and modal behavior is adapted from Sushmitadasari/Portfolio_series; see docs/REFERENCE_CODE_REUSE.md for source-file details and attribution notes.
 
 ## Content editing
 - Public pages: `app/page.tsx` and `components/sections/*`. Services are managed in Dashboard → Site Settings → Services. Complete each service with a truthful title, audience, description, features, deliverables, pricing approach, scope/limitations, CTA, and status. Do not use placeholder proof or fake testimonials.
@@ -27,20 +29,20 @@ Last updated: 2026-10-11. Production platform: Next.js App Router 16, React 19, 
 - Video uses Cloudinary `resource_type=video`; image uses `image`; other files use `raw`. The CMS stores media URLs in Markdown content.
 
 ## Security and deployment
-- Firebase Admin must stay at 13.10.0 for the verified Netlify CommonJS/ESM compatibility workaround. Do not casually bump major versions without checking Netlify function bundling and running a clean production build.
-- Keep Firebase service-account private key and Cloudinary secrets in Netlify environment variables only. Do not commit `.env` or service-account JSON. Preserve escaped `\n` formatting for `FIREBASE_PRIVATE_KEY` as required by `lib/firebase-admin.ts`.
+- Firebase Admin must stay at 13.10.0 for the existing Firebase Admin CommonJS/ESM compatibility workaround. Do not casually bump major versions without checking Vercel's Node.js runtime and server-auth path and running a clean production build.
+- Keep Firebase service-account private key and Cloudinary secrets in Vercel environment variables only. Do not commit `.env` or service-account JSON. Preserve escaped `\n` formatting for `FIREBASE_PRIVATE_KEY` as required by `lib/firebase-admin.ts`.
 - Firestore settings are admin-only; public settings are exposed through the sanitizing GET `/api/settings`. Server actions and API routes must independently enforce authorization. Never weaken `firestore.rules` to solve a frontend issue.
-- Netlify builds consume deployment credits. Batch changes, inspect workflow output, and avoid repeated no-op deploys.
+- Vercel build and function usage is subject to the selected plan's limits. Batch changes, inspect workflow output, and avoid repeated no-op deploys.
 
 ## Known backend boundaries
-- Netlify is serverless; do not assume long-lived in-memory state, background workers, local filesystem persistence, or guaranteed cron timing.
+- Vercel functions are serverless; do not assume long-lived in-memory state, background workers, local filesystem persistence, or guaranteed cron timing.
 - Firestore reads/writes, Cloudinary upload/bandwidth/transformations, and Resend email all have account-specific quotas and may incur limits/costs.
 - Theme choices are stored in site settings and should not be reset while testing. Seed data is optional after setup; do not repeatedly reseed because it can create duplicate demo records unless the seed action is made idempotent.
 - No change in this patch makes an upload count as a completed project, or turns a portfolio media upload into a public post automatically.
 
 ## Future changes checklist
 1. Read this file, `RESEARCH_AND_ARCHITECTURE.md`, `SETUP_AND_DEPLOYMENT.md`, `SPEC_RECONCILIATION.md`, and `VERIFICATION_REPORT.md`.
-2. Inspect current `package.json`, Netlify build logs, and exact affected files before editing.
+2. Inspect current `package.json`, Vercel build logs, and exact affected files before editing.
 3. Keep Firebase Admin 13.10.0 unless compatibility is verified against the deployed runtime.
 4. Preserve admin-only Firestore rules and server authorization checks.
 5. For a new design: add typed id, default, selector, CSS variables/modifiers, and test public + dashboard + mobile + reduced motion.
@@ -48,4 +50,4 @@ Last updated: 2026-10-11. Production platform: Next.js App Router 16, React 19, 
 7. Update this file with decisions, rationale, limitations, affected files, and verification results.
 
 ## Verification status for this change set
-- Static patch and archive structure can be checked locally. This environment cannot reach npm registries, so a clean dependency installation and production build must be confirmed by GitHub Actions/Netlify after installation. A passing local build is not claimed here.
+- Static patch and archive structure can be checked locally. This environment cannot reach npm registries, so a clean dependency installation and production build must be confirmed by GitHub Actions/Vercel after installation. A passing local build is not claimed here.

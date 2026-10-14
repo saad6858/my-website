@@ -1,13 +1,8 @@
 "use client";
-import { motion } from "framer-motion";
-import { SectionWrapper } from "@/components/layout/SectionWrapper";
-import { Container } from "@/components/layout/Container";
-import { CountUp } from "@/components/animations/CountUp";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-const fallback=[
-  {id:"platform-shipped",value:"1",label:"Platform Shipped"},
-  {id:"ideas-in-motion",value:"∞",label:"Ideas in Motion"},
-  {id:"built-in-public",value:"100%",label:"Built in Public"},
-  {id:"curiosity",value:"24/7",label:"Curiosity"}
-];
-export function Stats(){const {settings}=useSiteSettings();if(!settings.sections.stats)return null;const data=settings.stats.length?settings.stats:fallback;return <SectionWrapper className="bg-slate-900/40 py-16 md:py-20"><Container><div className="grid grid-cols-2 md:grid-cols-4">{data.map((s,i)=><motion.div key={s.id||i} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.1}} className="relative px-4 py-5 text-center md:py-0">{i>0?<span className="absolute left-0 top-1/2 hidden h-14 w-px -translate-y-1/2 bg-white/10 md:block"/>:null}<div className="text-3xl font-bold text-white md:text-4xl">{/^\d+$/.test(s.value)?<CountUp end={Number(s.value)}/>:s.value}</div><div className="mt-2 font-mono text-[10px] uppercase tracking-[.22em] text-slate-500">{s.label}</div></motion.div>)}</div></Container></SectionWrapper>}
+import { DesignSection } from "@/components/redesign/DesignFrame";
+export function Stats() {
+  const { settings } = useSiteSettings();
+  const items = settings.stats.length ? settings.stats : [{ id: "focus", value: "01", label: "Clear problem first" }, { id: "build", value: "02", label: "Systems that connect" }, { id: "ship", value: "03", label: "Built to be maintained" }, { id: "human", value: "04", label: "Human control stays" }];
+  return <DesignSection id="stats" className="redesign-stats"><div className="redesign-stats__grid grid grid-cols-2 border-y border-[var(--cine-border)] md:grid-cols-4">{items.slice(0, 4).map((item, i) => <article key={item.id || item.label} className="redesign-stat group relative min-h-36 border-[var(--cine-border)] p-5 sm:p-7 md:min-h-44 md:border-r md:last:border-r-0"><span className="font-mono text-[10px] tracking-[.2em] text-[var(--cine-muted)]">0{i + 1} / SIGNAL</span><div className="mt-5 text-3xl font-semibold tracking-[-.06em] text-[var(--cine-fg)] sm:text-4xl">{item.value}</div><p className="mt-2 text-xs leading-5 text-[var(--cine-muted)] sm:text-sm">{item.label}</p><span className="redesign-stat__accent absolute bottom-0 left-5 h-[2px] w-8 bg-[var(--cine-accent)] transition-all group-hover:w-16 sm:left-7"/></article>)}</div></DesignSection>;
+}

@@ -1,49 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { ArrowLeft,ArrowUpRight,CalendarDays } from "lucide-react";
 import Link from "next/link";
-import { getPostBySlug, getPosts } from "@/lib/actions";
+import { getPostBySlug,getPosts } from "@/lib/actions";
 import { formatDate } from "@/lib/utils";
 import { ShareButtons } from "@/components/blog/ShareButtons";
-import { BlogCard } from "@/components/blog/BlogCard";
 import { MarkdownContent } from "@/lib/markdown";
 import type { Post } from "@/types";
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const post = await getPostBySlug(slug);
-  if (!post) return { title: "Post not found" };
-  return {
-    title: post.metaTitle || post.title,
-    description: post.metaDescription || post.excerpt,
-    openGraph: { title: post.title, description: post.excerpt, images: post.ogImage ? [post.ogImage] : post.coverImage ? [post.coverImage] : [] },
-  };
-}
-
-export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const fetched = await getPostBySlug(slug);
-  if (!fetched || fetched.status !== "published") notFound();
-  const post: Post = fetched;
-  const related = (await getPosts(20, post.category)).filter((item) => item.id !== post.id).slice(0, 3);
-  const url = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/blog/${post.slug}`;
-
-  return <main className="pb-20 pt-24">
-    <div className="relative h-[44vh] min-h-[330px] overflow-hidden bg-gradient-to-br from-emerald-500/10 via-slate-950 to-indigo-500/10">
-      {post.coverImage ? <img src={post.coverImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" /> : null}
-      <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent" />
-    </div>
-    <article className="relative z-10 mx-auto -mt-24 max-w-3xl px-4">
-      <div className="rounded-3xl border border-white/10 bg-slate-900/95 p-7 shadow-2xl backdrop-blur-xl md:p-12">
-        <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-white"><ArrowLeft size={15} /> All posts</Link>
-        <div className="mt-7 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-300">{post.category}</span><span className="inline-flex items-center gap-1"><CalendarDays size={14} />{post.publishedAt ? formatDate(post.publishedAt) : ""}</span><span>{post.readTime} min read</span><span>{post.author}</span></div>
-        <h1 className="mt-6 text-4xl font-bold leading-tight md:text-5xl">{post.title}</h1>
-        <p className="mt-5 text-lg leading-8 text-slate-400">{post.excerpt}</p>
-        <div className="mt-8 border-y border-white/10 py-5"><ShareButtons url={url} title={post.title} /></div>
-        <div className="prose prose-invert mt-10 max-w-none prose-headings:font-semibold prose-headings:text-white prose-p:text-slate-300 prose-p:leading-8 prose-a:text-emerald-400 prose-code:rounded prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-1 prose-blockquote:border-emerald-500 prose-blockquote:text-slate-400 prose-li:text-slate-300"><MarkdownContent content={post.content} /></div>
-      </div>
-    </article>
-    {related.length ? <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8"><h2 className="text-3xl font-bold">Related <span className="text-gradient">Posts</span></h2><div className="mt-8 grid gap-7 lg:grid-cols-3">{related.map((item, index) => <BlogCard key={item.id} post={item} index={index} />)}</div></section> : null}
-    <section className="mx-auto mt-20 max-w-3xl px-4"><div className="rounded-3xl border border-white/10 bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 p-8 text-center"><h3 className="text-2xl font-bold">Enjoyed this? Subscribe for more.</h3><p className="mt-3 text-slate-400">Occasional notes, experiments, and lessons from building.</p><Link href="/#newsletter" className="mt-6 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950">Back to the newsletter</Link></div></section>
-  </main>;
-}
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const post=await getPostBySlug(slug);if(!post)return{title:"Post not found"};return{title:post.metaTitle||post.title,description:post.excerpt,openGraph:{title:post.title,description:post.excerpt,images:post.coverImage?[post.coverImage]:[]}}}
+export default async function PostPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const fetched=await getPostBySlug(slug);if(!fetched||fetched.status!=="published")notFound();const post:Post=fetched;const related=(await getPosts(20,post.category)).filter(item=>item.id!==post.id).slice(0,3);const url=`${process.env.NEXT_PUBLIC_APP_URL||"http://localhost:3000"}/blog/${post.slug}`;return <main data-public-page="article" className="article-page pt-20 pb-20"><div className="article-cover relative isolate min-h-[36vh] overflow-hidden border-b border-[var(--cine-border)] bg-[var(--cine-bg-2)] sm:min-h-[48vh]">{post.coverImage?<Image src={post.coverImage} alt="" fill priority sizes="100vw" className="object-cover opacity-70"/>:null}<div className="article-cover__shade absolute inset-0 -z-0"/><div className="absolute inset-x-0 bottom-0 z-10 mx-auto max-w-[1320px] px-5 pb-10 sm:px-8 md:pb-14"><Link href="/blog" className="inline-flex items-center gap-2 text-xs text-[var(--cine-fg)]"><ArrowLeft size={15}/> Back to the journal</Link></div></div><article className="article-body relative z-10 mx-auto -mt-5 max-w-[920px] px-5 sm:px-8"><div className="border border-[var(--cine-border)] bg-[var(--cine-bg)] p-5 sm:p-8 md:p-12"><div className="flex flex-wrap items-center gap-3 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--cine-muted)]"><span className="border border-[var(--cine-border)] px-2.5 py-1.5 text-[var(--cine-accent)]">{post.category}</span>{post.publishedAt?<span className="inline-flex items-center gap-1.5"><CalendarDays size={13}/>{formatDate(post.publishedAt)}</span>:null}<span>{post.readTime} min read</span><span>By {post.author}</span></div><h1 className="mt-7 text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[.92] tracking-[-.075em]">{post.title}</h1><p className="mt-6 max-w-3xl text-base leading-8 text-[var(--cine-muted)] sm:text-lg">{post.excerpt}</p><div className="mt-8 border-y border-[var(--cine-border)] py-5"><ShareButtons url={url} title={post.title}/></div><div className="prose prose-invert mt-10 max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-[var(--cine-fg)] prose-p:text-[var(--cine-muted)] prose-p:leading-8 prose-a:text-[var(--cine-accent)] prose-code:rounded prose-code:bg-[var(--cine-bg-2)] prose-code:px-1.5 prose-code:py-1 prose-blockquote:border-[var(--cine-accent)] prose-blockquote:text-[var(--cine-muted)] prose-li:text-[var(--cine-muted)]"><MarkdownContent content={post.content}/></div><div className="mt-12 flex flex-col justify-between gap-5 border-t border-[var(--cine-border)] pt-7 sm:flex-row sm:items-center"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[var(--cine-accent)]">Keep the conversation going</p><p className="mt-2 text-sm text-[var(--cine-muted)]">Questions about the workflow or idea in this article?</p></div><Link href="/contact" className="inline-flex min-h-11 items-center gap-3 border border-[var(--cine-border)] px-4 py-3 text-sm font-semibold">Talk it through <ArrowUpRight size={16}/></Link></div></div></article>{related.length?<section className="mx-auto mt-20 max-w-[1320px] px-5 sm:px-8"><div className="flex items-end justify-between gap-5"><div><p className="font-mono text-[10px] uppercase tracking-[.22em] text-[var(--cine-accent)]">Continue reading</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.05em]">Related articles</h2></div><Link href="/blog" className="inline-flex items-center gap-2 text-sm">All posts <ArrowUpRight size={15}/></Link></div><div className="mt-8 grid gap-px border border-[var(--cine-border)] bg-[var(--cine-border)] md:grid-cols-3">{related.map((item,i)=><article key={item.id} className="bg-[var(--cine-bg)] p-5 sm:p-7"><p className="font-mono text-[9px] text-[var(--cine-accent)]">0{i+1} / {item.category}</p><h3 className="mt-6 text-xl font-semibold leading-snug"><Link href={`/blog/${item.slug}`}>{item.title}</Link></h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--cine-muted)]">{item.excerpt}</p><Link href={`/blog/${item.slug}`} className="mt-6 inline-flex items-center gap-2 text-xs font-semibold">Read article <ArrowUpRight size={14}/></Link></article>)}</div></section>:null}</main>}

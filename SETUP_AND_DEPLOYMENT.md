@@ -2,7 +2,7 @@
 
 This guide is written for the workflow requested for this project:
 
-**Phone/browser only → GitHub website → Netlify deployment → Firebase + Cloudinary configuration.**
+**Phone/browser only → GitHub website → Vercel deployment → Firebase + Cloudinary configuration.**
 
 No Codespaces or local laptop workflow is required.
 
@@ -59,7 +59,7 @@ Inside the Firebase project:
 
 1. Open **Project settings**.
 2. Add a Web App.
-3. Copy the Firebase web configuration values into the Netlify variables later.
+3. Copy the Firebase web configuration values into Vercel Project Settings → Environment Variables later.
 
 You will need:
 
@@ -83,13 +83,13 @@ For Google sign-in, use the Firebase-provided auth domain/configuration.
 
 ### 3.3 Add your deployment domain to Auth settings
 
-After you know your Netlify hostname, add that hostname under Firebase Authentication's authorized domains.
+After you know your Vercel hostname, add that hostname under Firebase Authentication's authorized domains.
 
 Also add your final custom domain once you connect one.
 
 Examples:
 
-- `your-project.netlify.app`
+- `your-project.vercel.app`
 - `www.yourdomain.com`
 - `yourdomain.com`
 
@@ -145,7 +145,7 @@ From the JSON you need:
 
 The project already knows the project ID through `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.
 
-### 4.2 Netlify variables
+### 4.2 Vercel variables
 
 Set:
 
@@ -154,7 +154,7 @@ FIREBASE_CLIENT_EMAIL=<service account client_email>
 FIREBASE_PRIVATE_KEY=<service account private_key>
 ```
 
-For `FIREBASE_PRIVATE_KEY`, preserve the escaped `\n` line breaks from the JSON string when pasting into Netlify.
+For `FIREBASE_PRIVATE_KEY`, preserve the escaped `\n` line breaks from the JSON string when pasting into Vercel.
 
 ---
 
@@ -191,7 +191,7 @@ Create a Cloudinary account and retrieve:
 
 No unsigned upload preset is required for the application's file manager because the implementation uses signed uploads generated on the server.
 
-Netlify variables:
+Vercel variables:
 
 ```text
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
@@ -221,21 +221,23 @@ The broadcast interface intentionally refuses to pretend that an email was sent 
 
 ---
 
-## 8. Deploy to Netlify
+## 8. Deploy to Vercel
 
 ### 8.1 Import the GitHub repository
 
-Open Netlify and choose **Add new project → Import an existing project**. Connect GitHub, choose the repository, and let Netlify detect the Next.js framework. The repository includes `netlify.toml` only to pin Node 24 and the build command; no separate Netlify Next.js adapter package is required.
+Open Vercel and choose **Add New → Project**. Import this GitHub repository, keep the project root at the repository root, and let Vercel detect Next.js. The repository uses server rendering, Route Handlers, Server Actions, Firebase Admin, and dynamic metadata; do not enable static export or set a custom output directory.
 
-The current Netlify integration supports the Next.js App Router, SSR, Server Actions, Route Handlers, image optimization, and Middleware/Proxy behavior through OpenNext.
+The deployment configuration is represented by `vercel.json`. The redesign patch removes the old `vercel.json` and updates `.gitignore` to ignore Vercel's local metadata. Importing the repository and linking a domain still require your Vercel account; a ZIP cannot perform those account-level actions.
 
 ### 8.2 Environment variables
 
-Add the environment variables from the next section under **Project configuration → Environment variables**. Netlify makes them available during the build and at runtime for serverless functionality. Do not commit secret values to GitHub.
+Add the variables below under **Project Settings → Environment Variables**. Add them to Production and Preview as needed. Do not commit secret values.
 
-### 8.3 Environment variables
+The manual GitHub Actions verification workflow also checks the production build and expects the existing build-time values to be configured as GitHub repository Actions secrets; Vercel environment variables are separate from GitHub Actions secrets.
 
-Add the following variables before the production deployment:
+### 8.3 Required and optional variables
+
+Add the following before the first production deployment:
 
 ```text
 NEXT_PUBLIC_FIREBASE_API_KEY
@@ -247,7 +249,6 @@ NEXT_PUBLIC_FIREBASE_APP_ID
 
 FIREBASE_CLIENT_EMAIL
 FIREBASE_PRIVATE_KEY
-
 ADMIN_EMAIL
 
 NEXT_PUBLIC_APP_URL
@@ -262,45 +263,28 @@ CLOUDINARY_UPLOAD_FOLDER
 RESEND_API_KEY
 RESEND_FROM_EMAIL
 RESEND_TO_EMAIL
-
 CRON_SECRET
 ```
 
-You can leave the optional email/cron values empty until you actually use those capabilities.
+The email/cron values can remain empty until those capabilities are used. Keep all service secrets server-side; only values deliberately prefixed with `NEXT_PUBLIC_` are exposed to the browser.
 
-### 8.4 `NEXT_PUBLIC_APP_URL`
+### 8.4 Canonical site URL
 
-At first, set it to your actual Netlify URL, for example:
-
-```text
-https://your-project.netlify.app
-```
-
-After adding a custom domain, change the variable to the final canonical URL and redeploy.
-
----
+For the first deployment, set `NEXT_PUBLIC_APP_URL` to your Vercel production URL, for example `https://your-project.vercel.app`. After adding a custom domain, change it to the final canonical HTTPS URL and redeploy.
 
 ## 9. Connect your custom domain
 
-You can connect a domain purchased through Namecheap, Name.com, or another registrar. Netlify's Free plan currently supports custom domains with automatic managed HTTPS certificates.
+In Vercel Project Settings, open **Domains**, add your domain, and follow the exact DNS records Vercel displays for your project. Do not copy generic records from an unrelated deployment. Wait for Vercel to verify the domain and provision TLS, then set the intended production domain as primary.
 
-Recommended sequence:
+Add the final Vercel hostname and custom domain to Firebase Authentication's authorized domains. Also update `NEXT_PUBLIC_APP_URL` to your canonical HTTPS domain and redeploy so metadata and absolute links use the right host.
 
-1. Deploy the Netlify site first and confirm the `*.netlify.app` URL works.
-2. In Netlify, open **Domain management → Production domains → Add a domain → Add a domain you already own**.
-3. Enter your custom domain and choose either Netlify DNS or your existing DNS provider.
-4. If you keep DNS at the registrar, follow Netlify's exact DNS records shown in the **Pending DNS verification** area.
-5. Netlify automatically provisions and renews its managed HTTPS certificate once the domain is correctly pointed.
-6. Set the custom domain as the primary domain.
-7. Change `NEXT_PUBLIC_APP_URL` to the final canonical HTTPS URL and redeploy.
-
-For external DNS, Netlify documents an A record for the apex domain or an ALIAS/ANAME/flattened CNAME where supported, plus a CNAME for `www`. The exact records shown inside your Netlify dashboard take precedence over generic examples because they are customized for your site.
+For domains from Namecheap, Name.com, or another registrar, keep the registration where it is and point DNS according to Vercel's instructions. No registrar transfer is required.
 
 ### About the GitHub Student Developer Pack domain
 
-As of October 1, 2026, GitHub Education lists a Namecheap offer for **one year of .me domain registration** and also lists Name.com and .TECH domain offers. The student-pack benefit is tied to the eligible GitHub Education account and partner offer terms. Your sister should redeem it only in a way permitted by those partner terms; the website itself does not care which registrar owns the domain.
+As of the date of this patch, check the GitHub Education partner offers and their current terms in the Education dashboard. Eligibility and domain offers can change; the website itself does not depend on a particular registrar.
 
-If the resulting domain is registered through Namecheap or another registrar, you simply connect that domain to the Netlify site using the DNS process above.
+If the resulting domain is registered through a third-party registrar, connect it to Vercel using the DNS instructions shown in Vercel Project Settings.
 
 ## 10. Run the one-time seed
 
@@ -414,9 +398,9 @@ This avoids sending large binary files through the Next.js server and keeps the 
 
 ---
 
-## 14. Netlify deployment model
+## 14. Vercel deployment model
 
-This app is a normal dynamic Next.js deployment.
+This app is a normal dynamic Next.js deployment. Vercel detects the Next.js framework from the project and handles App Router rendering and server features through its supported Next.js runtime.
 
 Do **not** configure:
 
@@ -424,16 +408,7 @@ Do **not** configure:
 output: "export"
 ```
 
-The application needs server execution for:
-
-- Firebase Admin;
-- auth session cookies;
-- API routes;
-- server actions;
-- dynamic sitemap/robots;
-- OG generation.
-
----
+The application needs server execution for Firebase Admin, auth session cookies, API routes, server actions, dynamic sitemap/robots, and OG generation. The `vercel.json` in this patch pins the framework preset to Next.js; it does not replace account-level project settings or environment variables.
 
 ## 15. Important security rules
 
@@ -463,8 +438,9 @@ Not used by this project. Current Firebase storage changes require the Blaze bil
 ### Cloudinary
 The current free plan is useful for getting started. Monitor the credit allowance if you upload lots of high-resolution images, videos, or perform many transformations.
 
-### Netlify
-Netlify currently documents a $0 Free plan with custom domains + SSL, Functions, global CDN, and Git-based deployment. Netlify staff have also confirmed the Free tier may be used for commercial projects, while the legal Free Usage Tier remains discretionary and can be shut down if Netlify considers a project unsuitable for the tier. Keep usage within the current 300-credit monthly allowance and revisit the paid tiers as traffic grows.
+### Vercel
+
+Vercel's plan features and limits depend on the selected account plan and current usage policies. Confirm that the plan allows the site's intended business use and provides enough build, function, bandwidth, and image-optimization capacity. Preview and Production environment variables are configured separately by environment selection; redeploy after changing them.
 
 ---
 
@@ -475,7 +451,7 @@ Check:
 
 - `ADMIN_EMAIL` exactly matches the Firebase user's email;
 - Firebase Admin credentials are correct;
-- the Netlify deployment has the current environment variables;
+- the Vercel project has the required environment variables;
 - the user can authenticate successfully.
 
 Redeploy after changing server-side environment variables.
@@ -484,11 +460,11 @@ Redeploy after changing server-side environment variables.
 Check:
 
 - Google provider is enabled in Firebase Authentication;
-- the Netlify hostname is in Firebase Authentication authorized domains;
+- the Vercel hostname is in Firebase Authentication authorized domains;
 - the Firebase Auth domain in the web configuration is correct.
 
 ### File upload says Cloudinary is not configured
-Check all four Cloudinary variables in Netlify and redeploy.
+Check all four Cloudinary variables in Vercel and redeploy.
 
 ### Site settings are falling back to defaults
 This usually means the site-settings document has not been seeded yet, or Firebase Admin configuration is not working. Run `/seed` after confirming the admin login.
@@ -507,7 +483,7 @@ The intended workflow is:
 
 **Content/settings change:** use the dashboard.
 
-**Visual/feature/code change:** update the GitHub repository files, then let Netlify deploy the new commit.
+**Visual/feature/code change:** update the GitHub repository files, then let Vercel deploy the new commit.
 
 Because the application is modular, most future work should be isolated to a section, component, API route, or data model rather than requiring a rewrite of the whole project.
 
