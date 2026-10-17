@@ -1,12 +1,1 @@
-"use client";
-import { CinematicOpening } from "@/components/animations/CinematicOpening";
-import { PublicComposition } from "@/components/layouts/PublicComposition";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { isLayoutDesign } from "@/lib/design-catalog";
-export default function Home() {
-  const { settings, loading } = useSiteSettings();
-  if (loading) return <div className="min-h-screen" aria-busy="true" />;
-  const layout = isLayoutDesign(settings.appearance.layoutDesign) ? settings.appearance.layoutDesign : "cinema-index";
-  const showOpening = (["cinema-index", "split-canvas", "launchpad-constellation"] as readonly string[]).includes(layout);
-  return <>{showOpening ? <CinematicOpening /> : null}<PublicComposition settings={settings} layout={layout} /></>;
-}
+import {IntroGate} from '@/components/intro-gate';import {SectionRenderer} from '@/components/section-renderer';import {getPublishedPage,getSiteSettings} from '@/lib/public-data';import type {Metadata} from 'next';export async function generateMetadata():Promise<Metadata>{const p=await getPublishedPage('');return {title:p?.seo?.title||'AI automation that helps businesses work smarter',description:p?.seo?.description||p?.description}}export default async function Home(){const page=await getPublishedPage('');const settings=await getSiteSettings();return <><IntroGate enabled={settings.introEnabled!==false}/><main id="main"><SectionRenderer sections={page?.sections||[]}/><div className="section-wrap" style={{paddingBottom:35}}><p className="eyebrow">{settings.tagline}</p></div></main></>}

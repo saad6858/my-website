@@ -1,2 +1,1 @@
-import type { MetadataRoute } from "next";
-export default function robots():MetadataRoute.Robots{const base=process.env.NEXT_PUBLIC_APP_URL??"http://localhost:3000";return{rules:{userAgent:"*",allow:"/",disallow:["/dashboard/","/api/","/seed"]},sitemap:`${base}/sitemap.xml`}}
+import type {MetadataRoute} from 'next';import {getSiteSettings} from '@/lib/public-data';export const dynamic='force-dynamic';export default async function robots():Promise<MetadataRoute.Robots>{const settings=await getSiteSettings();const base=String(settings.siteUrl||process.env.NEXT_PUBLIC_SITE_URL||process.env.NEXT_PUBLIC_APP_URL||'https://saadmaqbool.vercel.app').replace(/\/$/,'');return {rules:[{userAgent:'*',allow:'/',disallow:['/admin','/api/']}],sitemap:`${base}/sitemap.xml`}}

@@ -1,36 +1,3 @@
-import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
-import "./theme-versions.css";
-import "./layout-designs.css";
-import "./admin-layout-designs.css";
-import { AuthProvider } from "@/components/providers/AuthProvider";
-import { SiteSettingsProvider } from "@/components/providers/SiteSettingsProvider";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
-import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { ScrollProgress } from "@/components/animations/ScrollProgress";
-import { SmoothScroll } from "@/components/animations/SmoothScroll";
-import { CustomCursorGate } from "@/components/animations/CustomCursorGate";
-import { PageTracking } from "@/components/analytics/PageTracking";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", weight: ["300", "400", "500", "600", "700", "800", "900"] });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", weight: ["400", "500"] });
-
-export const metadata: Metadata = {
-  title: { default: "my-platform", template: "%s | my-platform" },
-  description: "A premium personal brand platform for AI, automation, systems, and building in public.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  openGraph: { title: "my-platform", description: "AI, automation, systems, and building in public.", type: "website" },
-  twitter: { card: "summary_large_image" },
-  icons: { icon: "/favicon.svg" },
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className="dark">
-    <body className={`${inter.variable} ${mono.variable} bg-bg-primary text-text-primary antialiased overflow-x-hidden`}>
-      <AuthProvider><SiteSettingsProvider><ThemeProvider><PageTracking /><SmoothScroll /><div aria-hidden className="cine-grain" /><AnnouncementBar /><ScrollProgress /><CustomCursorGate /><Navbar />{children}<Footer /></ThemeProvider></SiteSettingsProvider></AuthProvider>
-    </body>
-  </html>;
-}
+import type {Metadata,Viewport} from 'next';import './globals.css';import {ThemeProvider} from '@/components/theme-provider';import {SiteHeader} from '@/components/site-header';import {SiteFooter} from '@/components/site-footer';import {getSiteSettings} from '@/lib/public-data';import {AnalyticsTracker} from '@/components/analytics-tracker';
+export async function generateMetadata():Promise<Metadata>{const settings=await getSiteSettings();const siteUrl=String(settings.siteUrl||process.env.NEXT_PUBLIC_SITE_URL||process.env.NEXT_PUBLIC_APP_URL||'https://saadmaqbool.vercel.app');const title=String(settings.seoTitle||'Saad Maqbool — AI & Automation');const description=String(settings.seoDescription||'AI automation that helps businesses work smarter. Practical AI assistants, workflow automation and agentic systems by Saad Maqbool.');const image=typeof settings.socialImage==='string'&&settings.socialImage.startsWith('https://')?settings.socialImage:undefined;let metadataBase:URL;try{metadataBase=new URL(siteUrl)}catch{metadataBase=new URL(process.env.NEXT_PUBLIC_SITE_URL||process.env.NEXT_PUBLIC_APP_URL||'https://saadmaqbool.vercel.app')}return {metadataBase,title:{default:title,template:'%s | Saad Maqbool'},description,applicationName:String(settings.brandName||'Saad Maqbool'),openGraph:{type:'website',siteName:String(settings.brandName||'Saad Maqbool'),title,description,images:image?[image]:undefined},twitter:{card:'summary_large_image',title,description,images:image?[image]:undefined},icons:{icon:'/icon.svg'},robots:{index:true,follow:true}}};export const dynamic='force-dynamic';export const viewport:Viewport={width:'device-width',initialScale:1,themeColor:'#11110f'};
+export default async function RootLayout({children}:{children:React.ReactNode}){const settings=await getSiteSettings();return <html lang="en" data-theme={settings.themeDefault||'dark'} style={{'--custom-accent':settings.accent||'#c3a67a'} as React.CSSProperties} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:"(function(){try{var t=localStorage.getItem('sm-theme');if(t!=='dark'&&t!=='light'&&t!=='balanced')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){}})();"}}/></head><body><a href="#main" className="skip-link">Skip to content</a><ThemeProvider defaultTheme={settings.themeDefault}><SiteHeader brand={settings.brandName} navigationJson={settings.navigationJson}/><AnalyticsTracker/>{children}<SiteFooter brandName={settings.brandName} email={settings.email} linkedin={settings.linkedin} footerText={settings.footerText} whatsappNumber={settings.whatsappNumber} whatsappMessage={settings.whatsappMessage} footerLinksJson={settings.footerLinksJson}/></ThemeProvider></body></html>}

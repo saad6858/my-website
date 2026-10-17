@@ -1,18 +1,5 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-
-const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-const adminApp = getApps().length
-  ? getApps()[0]
-  : initializeApp({
-      credential: cert({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
-      }),
-    });
-
-export const adminAuth = getAdminAuth(adminApp);
-export const adminDb = getAdminFirestore(adminApp);
+import 'server-only';import {cert,getApps,initializeApp, type App} from 'firebase-admin/app';import {getAuth} from 'firebase-admin/auth';import {getFirestore} from 'firebase-admin/firestore';
+let cached:App|undefined;
+function adminApp(){if(cached)return cached;if(getApps().length){cached=getApps()[0];return cached}const raw=process.env.FIREBASE_SERVICE_ACCOUNT_JSON;let parsed:any;if(raw){try{parsed=JSON.parse(raw)}catch{throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON must be valid JSON.')}}else if((process.env.FIREBASE_CLIENT_EMAIL||process.env.FIREBASE_ADMIN_CLIENT_EMAIL)&&(process.env.FIREBASE_PRIVATE_KEY||process.env.FIREBASE_ADMIN_PRIVATE_KEY)){parsed={project_id:process.env.FIREBASE_PROJECT_ID||process.env.FIREBASE_ADMIN_PROJECT_ID||process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,client_email:process.env.FIREBASE_CLIENT_EMAIL||process.env.FIREBASE_ADMIN_CLIENT_EMAIL,private_key:(process.env.FIREBASE_PRIVATE_KEY||process.env.FIREBASE_ADMIN_PRIVATE_KEY||'').replace(/\\n/g,'\n')}}else{throw new Error('Configure FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY for server-side operations.')}cached=initializeApp({credential:cert(parsed),projectId:parsed.project_id||process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID});return cached}
+export function adminAuth(){return getAuth(adminApp())}export function adminDb(){return getFirestore(adminApp())}
+export async function requireAdmin(request:Request){const header=request.headers.get('authorization')||'';const token=header.startsWith('Bearer ')?header.slice(7):'';if(!token)throw new Error('AUTH_REQUIRED');let decoded;try{decoded=await adminAuth().verifyIdToken(token,true)}catch{throw new Error('AUTH_REQUIRED')}if(decoded.admin!==true)throw new Error('ADMIN_REQUIRED');return decoded}

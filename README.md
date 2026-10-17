@@ -1,180 +1,49 @@
-# My Platform
+# Saad Maqbool — AI & Automation Website
 
-A premium, dark-luxury personal brand platform designed to feel closer to a polished SaaS product than a traditional portfolio.
+A complete new Next.js App Router application for Saad Maqbool's personal AI automation portfolio. This source is intended to replace the abandoned application code in the target repository; it does not copy or depend on the old `my-website` codebase.
 
-The project combines a public personal site, portfolio, blog/CMS, CRM, project pipeline, analytics, finance tracker, content calendar, media manager, and a Firestore-backed admin control plane.
+## Included
 
-## Stack
+- Responsive, editorial dark / warm-light / balanced themes; theme preference persists locally and defaults to the configured theme or device preference.
+- Skippable, brief cinematic intro with reduced-motion support; custom vector SM monogram and favicon.
+- Editable homepage, about, services, projects/case studies, industry directory and child pages, insights/blog, FAQ, contact and privacy pages.
+- Firebase email/password and Google sign-in on the admin dashboard; server-side APIs verify Firebase ID tokens and require the protected `admin: true` custom claim.
+- Firestore-backed page/content CMS, custom page and niche creation by slug, typed section rendering, private drafts, private in-dashboard previews, explicit publish/unpublish, revision snapshots and one-step restore.
+- Global settings for brand, theme, footer, SEO defaults, email, LinkedIn and WhatsApp links.
+- Projects, services, industries, posts, FAQs, media metadata and lead pipeline (`New`, `Contacted`, `Qualified`, `Won`, `Lost`).
+- Aggregate daily analytics and UTM campaign counters without visitor IDs or IP storage. Contact endpoint with validation, honeypot, hashed-IP rate limit and optional Resend email delivery. Contact submissions require Firebase Admin server configuration and are saved as leads.
+- Signed Cloudinary upload flow and required alt-text metadata.
+- Dynamic metadata, canonical URLs, Open Graph defaults, sitemap, robots, noindex admin route, secure response headers, Firestore rules and admin-claim provisioning scripts.
 
-- Next.js 16.3.8
-- React 19.3.0
-- TypeScript 5.9.2
-- Tailwind CSS 3.4.19
-- Framer Motion 13.4.5
-- Firebase Web SDK 12.19.0
-- Firebase Admin SDK 14.5.0
-- Cloudinary for media storage
-- Recharts 3.10.1
-- Lucide React 1.48.0
-- react-markdown + remark-gfm
-- Optional Resend email integration
-- Vercel deployment
+## Installation workflow — IMPORTANT
 
-## Major capabilities
+The GitHub Actions installer is intentionally **not inside this ZIP**. Download `install-complete-website.yml` as a separate file from the delivery. Upload the website ZIP to the repository root as `saad-maqbool-complete-website.zip`. Upload the workflow file to `.github/workflows/install-complete-website.yml`. Run it manually from **Actions → Install complete website → Run workflow**.
 
-## Current public redesign
+That one-time workflow validates the archive, removes the old tracked codebase, extracts this ZIP at repository root, deletes the uploaded ZIP and deletes its own workflow file, then commits and pushes the resulting complete source to the branch where you ran it. It does not run npm, run a build, access Vercel secrets or deploy directly. A push to the configured Vercel-connected branch will trigger Vercel's normal deployment behavior.
 
-The public homepage section JSX is newly implemented in `components/sections/`. Layout composition is managed in `lib/design-catalog.ts`; the 15 independent palettes are managed in `lib/theme-catalog.ts`. The authenticated dashboard now shares those same 15 composition choices and 15 palettes, with dashboard-specific styling in `app/admin-layout-designs.css`. Dashboard data/auth logic is preserved. See `docs/NEW_LAYOUT_DESIGN_SYSTEM.md` and `docs/REFERENCE_CODE_REUSE.md`.
+## Vercel / Firebase setup
 
+Keep all credentials in Vercel environment variables, not GitHub Actions and not the ZIP. Copy the variable names from `.env.example` into the existing Vercel project as needed. Existing Firebase web config variables can be reused if their names match. The server requires either `FIREBASE_SERVICE_ACCOUNT_JSON` or `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` (and project ID). Preserve valid existing production credentials; do not paste private keys into GitHub.
 
-### Public
+1. In Firebase Authentication, enable the providers you actually use: Email/Password and Google.
+2. Confirm the server service account belongs to the same Firebase project as the public web config.
+3. Create/sign in to the trusted admin account. Obtain its Firebase Auth UID from Firebase Console.
+4. In a trusted local environment with `firebase-admin` installed, set `FIREBASE_SERVICE_ACCOUNT_JSON` and run `node scripts/set-admin-claim.mjs YOUR_AUTH_UID`. Sign out and back in so the refreshed ID token contains the claim. Never commit the service account or claim-setting credentials.
+5. Sign in at `/admin`, choose **Initialize content** once. It creates missing starter pages, project and FAQs without overwriting existing documents.
+6. For contact storage and email delivery, configure Firebase Admin credentials and optionally `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, and `CONTACT_FROM_EMAIL`. Without Resend, leads are stored but email notifications are not sent.
+7. For media uploads, configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. Upload signatures are generated server-side.
+8. Configure Firestore TTL for `rateLimits.expiresAt` if you want automatic cleanup of hashed rate-limit records. The rules file denies all direct browser Firestore access because this app reads/writes Firestore only through server-side routes.
 
-- Premium hero and animated sections
-- About / journey / skills
-- Services catalog
-- Process
-- Editable pricing
-- Portfolio
-- Blog listing and detail pages
-- Search and categories
-- Contact form
-- FAQ
-- Testimonials area
-- Newsletter signup
-- Dynamic SEO / OG image / sitemap / robots
+## Content authoring
 
-### Admin
+In `/admin`, use **Pages & sections** for ordinary pages and niche landing pages. For a niche page inside the industry directory, use a slug such as `industries/dental-clinics` or `industries/physiotherapy`. Published child pages appear automatically in the Industry Solutions directory. Edit the industry directory page's section cards too if you want to control the introduction and featured order. The JSON editor exposes all page fields and section blocks; **Preview privately** shows the current editor contents in the authenticated dashboard. Save changes first, then explicitly publish. Existing published pages save edits as draft changes until Publish is clicked. Revision history and Undo are available on records.
 
-- Secure email/Google sign-in
-- HttpOnly Firebase session cookie
-- Lead tracker
-- Project pipeline
-- Analytics
-- Content calendar
-- Finance tracker
-- Blog CMS
-- File manager
-- Site settings
-- Service catalog editor
-- Contact inbox
-- Newsletter subscriber management
+Supported section types: `hero`, `cards`, `featured`, `split`, `cta`, `prose`. Section objects use `id`, `type`, `visible`, `eyebrow`, `title`, `body`, `items`, `ctaLabel`, and `ctaHref` as applicable. Use plain text; arbitrary HTML and script execution are not supported.
 
-## Important architecture choices
+## Environment and delivery
 
-The uploaded 14-chunk source specification was retained as the product baseline, but several obsolete implementation instructions were replaced with current production-safe architecture. See `RESEARCH_AND_ARCHITECTURE.md` for the full reasoning.
-
-Key changes:
-
-- Next.js 14 → Next.js 16.3.8
-- `middleware.ts` → `proxy.ts`
-- static export removed
-- Firebase Storage replaced with Cloudinary
-- server-side auth/session verification added
-- public settings endpoint sanitized
-- exact `ADMIN_EMAIL` controls admin access
-- abandoned real-estate property-video offering removed
-
-## Setup
-
-Read `SETUP_AND_DEPLOYMENT.md` before deployment.
-
-The intended setup path does not require Codespaces or a local computer.
-
-1. Upload this repository to GitHub.
-2. Create/configure Firebase.
-3. Create Cloudinary.
-4. Import the repository into Vercel.
-5. Add the environment variables in Vercel Project Settings.
-6. Create the Firebase admin account matching `ADMIN_EMAIL`.
-7. Deploy.
-8. Sign in at `/login`.
-9. Run `/seed` once.
-10. Configure the live site from `/dashboard/settings`.
-
-## Environment variables
-
-See `.env.example` for the full template.
-
-### Public Firebase
-
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-
-### Server secrets
-
-- `FIREBASE_CLIENT_EMAIL`
-- `FIREBASE_PRIVATE_KEY`
-- `ADMIN_EMAIL`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-- `RESEND_API_KEY` (optional)
-
-### Public app settings
-
-- `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_SITE_NAME`
-- `NEXT_PUBLIC_SITE_TAGLINE`
-- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_UPLOAD_FOLDER`
-
-## Folder structure
-
-```text
-app/
-  about/
-  api/
-  blog/
-  contact/
-  dashboard/
-  login/
-  portfolio/
-  services/
-  globals.css
-  layout.tsx
-  page.tsx
-components/
-  analytics/
-  animations/
-  blog/
-  dashboard/
-  layout/
-  portfolio/
-  providers/
-  sections/
-  ui/
-hooks/
-lib/
-public/
-types/
-proxy.ts
-firestore.rules
-firestore.indexes.json
-```
-
-## Security model
-
-Anonymous visitors can read the public website. Important writes are handled by server-side code using Firebase Admin.
-
-Admin access is controlled by the `ADMIN_EMAIL` server environment variable plus Firebase's `admin` custom claim.
-
-Cloudinary secrets are server-side only.
-
-## Deployment
-
-Deploy this as a normal dynamic Next.js application on Vercel. Let Vercel detect the Next.js framework; do not configure a static export or a custom output directory. Configure all required public and server environment variables in Vercel Project Settings before deploying.
-
-Choose a Vercel plan that fits the site's actual business use and expected traffic. Verify the current plan terms and usage limits in Vercel before production deployment; do not assume a free tier permits commercial use.
-
-## Contribution / future changes
-
-Keep UI concerns in `components/`, browser state in `hooks/`, server/infrastructure code in `lib/`, and routing in `app/`.
-
-Prefer adding or changing isolated modules instead of placing business logic directly inside large page components.
-
-## License
-
-MIT
+- Node.js 22 LTS recommended. Vercel should use a compatible Node runtime.
+- The source archive deliberately excludes secrets, old-repository code, the one-time installer workflow, and raw reference material.
+- The installer does not build or deploy. Vercel performs the deployment build when it receives the commit.
+- This delivery was not built in a local environment, by design, and no claim of successful Vercel deployment is made. Let Vercel perform the first deployment build and address any deployment log errors before calling it live-ready.
+- Review `docs/SECURITY-AND-OPERATIONS.md` and complete `docs/POST-LAUNCH-QA.md` after launch.
