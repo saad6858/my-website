@@ -1,0 +1,220 @@
+name: Diagnose Website Errors
+
+on:
+workflow_dispatch:
+
+permissions:
+contents: read
+
+concurrency:
+group: diagnose-website-${{ github.ref }}
+cancel-in-progress: false
+
+jobs:
+diagnose:
+name: Run Website Diagnostics
+runs-on: ubuntu-latest
+timeout-minutes: 30
+
+steps:
+  - name: Check out repository
+    uses: actions/checkout@v4
+    with:
+      fetch-depth: 1
+
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: 22
+      cache: npm
+
+  - name: Record repository information
+    shell: bash
+    run: |
+      {
+        echo "# Website Diagnostic Report"
+        echo
+        echo "- Repository: $GITHUB_REPOSITORY"
+        echo "- Branch: $GITHUB_REF_NAME"
+        echo "- Commit: $GITHUB_SHA"
+        echo "- Node: $(node --version)"
+        echo "- npm: $(npm --version)"
+        echo "- Date (UTC): $(date -u '+%Y-%m-%d %H:%M:%S')"
+        echo
+      } > diagnostic-report.md
+
+  - name: Install dependencies
+    id: install
+    shell: bash
+    run: |
+      set +e
+      npm ci 2>&1 | tee install.log
+      result=${PIPESTATUS[0]}
+      echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+
+      {
+        echo "## Dependency Installation"
+        echo "- Exit code: $result"
+        echo
+        echo '```text'
+        cat install.log
+        echo '```'
+        echo
+      } >> diagnostic-report.md
+
+      exit 0
+
+  - name: TypeScript diagnostics
+    id: types
+    if: steps.install.outputs.exit_code == '0'
+    shell: bash
+    run: |
+      set +e
+
+      if node -e "process.exit(require('./package.json').scripts?.typecheck ? 0 : 1)"; then
+        npm run typecheck 2>&1 | tee typecheck.log
+        result=${PIPESTATUS[0]}
+      else
+        npx --no-install tsc --noEmit --pretty false 2>&1 | tee typecheck.log
+        result=${PIPESTATUS[0]}
+      fi
+
+      echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+
+      {
+        echo "## TypeScript"
+        echo "- Exit code: $result"
+        echo
+        echo '```text'
+        cat typecheck.log
+        echo '```'
+        echo
+      } >> diagnostic-report.md
+
+      exit 0
+
+  - name: ESLint diagnostics
+    id: lint
+    if: steps.install.outputs.exit_code == '0'
+    shell: bash
+    run: |
+      set +e
+
+      if node -e "process.exit(require('./package.json').scripts?.lint ? 0 : 1)"; then
+        npm run lint 2>&1 | tee lint.log
+        result=${PIPESTATUS[0]}
+      elif [ -x node_modules/.bin/eslint ]; then
+        npx --no-install eslint . 2>&1 | tee lint.log
+        result=${PIPESTATUS[0]}
+      else
+        echo "SKIPPED: No lint script or locally installed ESLint was found." | tee lint.log
+        result=0
+      fi
+
+      echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+
+      {
+        echo "## ESLint"
+        echo "- Exit code: $result"
+        echo
+        echo '```text'
+        cat lint.log
+        echo '```'
+        echo
+      } >> diagnostic-report.md
+
+      exit 0
+
+  - name: Production build diagnostics
+    id: build
+    if: steps.install.outputs.exit_code == '0'
+    shell: bash
+    run: |
+      set +e
+      npm run build 2>&1 | tee build.log
+      result=${PIPESTATUS[0]}
+      echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+
+      {
+        echo "## Production Build"
+        echo "- Exit code: $result"
+        echo
+        echo '```text'
+        cat build.log
+        echo '```'
+        echo
+      } >> diagnostic-report.md
+
+      exit 0
+
+  - name: Dependency security audit
+    id: audit
+    if: steps.install.outputs.exit_code == '0'
+    shell: bash
+    run: |
+      set +e
+      npm audit --omit=dev --audit-level=low 2>&1 | tee security-audit.log
+      result=${PIPESTATUS[0]}
+      echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+
+      {
+        echo "## Production Dependency Security Audit"
+        echo "- Exit code: $result"
+        echo
+        echo '```text'
+        cat security-audit.log
+        echo '```'
+        echo
+      } >> diagnostic-report.md
+
+      exit 0
+
+  - name: Explain skipped checks
+    if: steps.install.outputs.exit_code != '0'
+    shell: bash
+    run: |
+      {
+        echo "## Checks not completed"
+        echo
+        echo "Dependency installation failed. TypeScript, ESLint, build, and dependency audit checks were skipped."
+        echo
+      } >> diagnostic-report.md
+
+  - name: Summarize results
+    if: always()
+    shell: bash
+    run: |
+      {
+        echo "## Diagnostic Outcome"
+        echo
+        echo "| Check | Result |"
+        echo "|---|---|"
+        echo "| Dependency installation | ${INSTALL_RESULT:-not completed} |"
+        echo "| TypeScript | ${TYPE_RESULT:-not completed} |"
+        echo "| ESLint | ${LINT_RESULT:-not completed} |"
+        echo "| Production build | ${BUILD_RESULT:-not completed} |"
+        echo "| Security audit | ${AUDIT_RESULT:-not completed} |"
+      } >> diagnostic-report.md
+
+      cat diagnostic-report.md >> "$GITHUB_STEP_SUMMARY"
+    env:
+      INSTALL_RESULT: ${{ steps.install.outputs.exit_code }}
+      TYPE_RESULT: ${{ steps.types.outputs.exit_code }}
+      LINT_RESULT: ${{ steps.lint.outputs.exit_code }}
+      BUILD_RESULT: ${{ steps.build.outputs.exit_code }}
+      AUDIT_RESULT: ${{ steps.audit.outputs.exit_code }}
+
+  - name: Upload complete diagnostic bundle
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: website-diagnostic-${{ github.run_number }}
+      path: |
+        diagnostic-report.md
+        install.log
+        typecheck.log
+        lint.log
+        build.log
+        security-audit.log
+      if-no-files-found: warn
+      retention-days: 14
