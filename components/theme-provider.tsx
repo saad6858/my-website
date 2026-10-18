@@ -1,15 +1,8 @@
 'use client';
-import {createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';
-type Theme='signal'|'cobalt'|'editorial'|'teal'|'terminal'|'blueprint'|'paper';
-const allowed:Theme[]=['signal','cobalt','editorial','teal','terminal','blueprint','paper'];
-const C=createContext<{theme:Theme;setTheme:(v:Theme)=>void}>({theme:'signal',setTheme:()=>{}});
-export function ThemeProvider({children,defaultTheme='signal'}:{children:React.ReactNode;defaultTheme?:string}){
-  const initial:Theme=allowed.includes(defaultTheme as Theme)?defaultTheme as Theme:'signal';
-  const [theme,setThemeState]=useState<Theme>(initial);
-  useEffect(()=>{setThemeState(initial);document.documentElement.dataset.theme=initial;},[initial]);
-  useEffect(()=>{document.documentElement.dataset.theme=theme;},[theme]);
-  const setTheme=useCallback((v:Theme)=>{if(allowed.includes(v))setThemeState(v)},[]);
-  const value=useMemo(()=>({theme,setTheme}),[theme,setTheme]);
-  return <C.Provider value={value}>{children}</C.Provider>;
+import type {ReactNode} from 'react';
+import {MotionConfig} from 'motion/react';
+
+/** One site-wide motion policy. The active visual theme is selected by the owner in Admin. */
+export function ThemeProvider({children}:{children:ReactNode}) {
+  return <MotionConfig reducedMotion="user" transition={{duration:0.65,ease:[0.16,1,0.3,1]}}>{children}</MotionConfig>;
 }
-export function useTheme(){return useContext(C)}

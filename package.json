@@ -1,35 +1,33 @@
 {
-  "name": "sm-automations-site",
-  "version": "2.0.0",
+  "name": "saad-maqbool-site",
+  "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=22.6.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "verify:static": "node scripts/verify-static.cjs",
-    "test:media": "node --experimental-strip-types --test lib/media-limits.test.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "firebase": "^12.0.0",
+    "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
-    "lucide-react": "1.59.0",
-    "next": "16.4.2",
-    "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "zod": "^4.0.0"
+    "lucide-react": "^0.555.0",
+    "next": "^16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.0.0",
+    "motion": "^14.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "eslint": "^9.38.0",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "^16.4.2",
     "typescript": "^5.9.0"
-  },
-  "type": "module"
+  }
 }

@@ -5,11 +5,7 @@
 
 ## Section block types
 - `hero`: eyebrow, title, body, CTA and optional linked items.
-- `cards`: responsive capability cards.
-- `featured` / `showcase`: horizontal case-study cards with motion states.
-- `split`: asymmetric editorial two-column story.
-- `timeline`: numbered process or journey with staggered reveals.
-- `gallery`: offset visual mosaic.
+- `cards` / `featured`: title, description and items with title/body/href/label.
 - `split`: two-column title and body with optional CTA.
 - `cta`: focused contact call to action.
 - `prose`: plain-text body blocks.
@@ -23,7 +19,7 @@
 - `faqs`: questions/answers, order and publication status.
 - `leads`: contact enquiries and pipeline status/notes/follow-up date.
 - `media`: Cloudinary asset metadata and alt text.
-- `siteSettings/global`: global site copy, selected `layoutPreset`, selected `themeDefault`, optional accent override, SEO defaults and contact links. Layout presets are `cinema`, `editorial`, `swiss`, `split`, `terminal`, and `timeline`; palettes are `signal`, `cobalt`, `editorial`, `teal`, `terminal`, `blueprint`, and `paper` (a warm parchment light mode, not pure white). The administrator chooses the single global layout and palette; visitors have no theme switcher.
+- `siteSettings/global`: global site copy, theme defaults, SEO defaults and contact links.
 - `rateLimits`: hashed source-address counters with expiry timestamp.
 - `analyticsDaily`: aggregate daily event counts, top-page counts and normalised campaign counters; no individual visitor identifiers or IP addresses.
 
