@@ -1,1 +1,21 @@
-'use client';import type {SitePage} from '@/lib/content';export function AdminPreview({value,onClose}:{value:any;onClose:()=>void}){const page=value as Partial<SitePage>;const sections=Array.isArray(page.sections)?page.sections:[];return <div role="dialog" aria-modal="true" aria-label="Private page preview" className="preview-overlay"><div className="preview-window"><div className="preview-toolbar"><div><p className="eyebrow">PRIVATE PREVIEW / NOT PUBLISHED</p><strong>{page.title||'Untitled page'}</strong></div><button className="admin-button" onClick={onClose}>Close preview ✕</button></div><div className="preview-content">{sections.filter((s:any)=>s.visible!==false).map((s:any)=><section key={s.id||s.title} className={s.type==='hero'?'preview-hero':'preview-section'}><p className="eyebrow">{s.eyebrow||s.type}</p>{s.title&&<h2>{s.title}</h2>}{s.body&&<p>{s.body}</p>}{Array.isArray(s.items)&&<div className="preview-cards">{s.items.map((it:any,i:number)=><article key={i}><h3>{it.title}</h3><p>{it.body}</p><small>{it.href||''}</small></article>)}</div>}{s.ctaLabel&&<span className="button button-primary">{s.ctaLabel}</span>}</section>)}{sections.length===0&&<p>No page sections yet. Add sections to the JSON content.</p>}</div><div className="preview-footer">This preview is only visible inside your authenticated admin session. Save as draft or publish when ready.</div></div></div>}
+'use client';
+import type {SitePage} from '@/lib/content';
+import {SectionRenderer} from '@/components/section-renderer';
+
+/** Uses the same section renderer as public routes so CMS previews inherit the real typography and motion system. */
+export function AdminPreview({value,onClose}:{value:any;onClose:()=>void}){
+  const page=value as Partial<SitePage>;
+  const sections=Array.isArray(page.sections)?page.sections:[];
+  return <div role="dialog" aria-modal="true" aria-label="Private page preview" className="preview-overlay">
+    <div className="preview-window">
+      <div className="preview-toolbar">
+        <div><p className="eyebrow">PRIVATE PREVIEW / NOT PUBLISHED</p><strong>{page.title||'Untitled page'}</strong></div>
+        <button type="button" className="admin-button" onClick={onClose}>Close preview ✕</button>
+      </div>
+      <div className="preview-content">
+        {sections.length?<SectionRenderer sections={sections as any}/>:<p className="empty-state">No page sections yet. Add a supported section block in the editor to preview it.</p>}
+      </div>
+      <div className="preview-footer">Preview uses the same section components, theme tokens and animation presets as published CMS pages. Nothing is published until you explicitly publish it.</div>
+    </div>
+  </div>;
+}

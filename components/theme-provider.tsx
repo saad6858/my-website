@@ -1,1 +1,8 @@
-'use client';import {createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';type Theme='dark'|'light'|'balanced';const C=createContext<{theme:Theme;setTheme:(v:Theme)=>void}>({theme:'dark',setTheme:()=>{}});export function ThemeProvider({children,defaultTheme='dark'}:{children:React.ReactNode;defaultTheme?:string}){const [theme,setThemeState]=useState<Theme>(defaultTheme==='light'||defaultTheme==='balanced'?defaultTheme:'dark');useEffect(()=>{try{const saved=localStorage.getItem('sm-theme');if(saved==='dark'||saved==='light'||saved==='balanced')setThemeState(saved);else if(matchMedia('(prefers-color-scheme: light)').matches)setThemeState('light')}catch{}},[]);useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('sm-theme',theme)}catch{}},[theme]);const setTheme=useCallback((v:Theme)=>setThemeState(v),[]);const value=useMemo(()=>({theme,setTheme}),[theme,setTheme]);return <C.Provider value={value}>{children}</C.Provider>}export function useTheme(){return useContext(C)}
+'use client';
+import type {ReactNode} from 'react';
+import {MotionConfig} from 'motion/react';
+
+/** One site-wide motion policy. The active visual theme is selected by the owner in Admin. */
+export function ThemeProvider({children}:{children:ReactNode}) {
+  return <MotionConfig reducedMotion="user" transition={{duration:0.65,ease:[0.16,1,0.3,1]}}>{children}</MotionConfig>;
+}

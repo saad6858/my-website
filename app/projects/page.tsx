@@ -1,1 +1,11 @@
-import {getPublishedPage,getPublishedCollection} from '@/lib/public-data';import {SectionRenderer} from '@/components/section-renderer';import Link from 'next/link';import type {Metadata} from 'next';export const metadata:Metadata={title:'Projects'};export default async function Projects(){const p=await getPublishedPage('projects');const projects=await getPublishedCollection('projects');return <main id="main"><SectionRenderer sections={p?.sections||[]}/><section className="content-section section-wrap"><div className="section-intro"><p className="eyebrow">CASE STUDIES</p><h2>More about the work</h2></div><div className="card-grid">{projects.map((x:any)=><article className="service-card" key={x.id}><span className="card-index">PROJECT</span><h3>{x.title}</h3><p>{x.summary||x.body}</p><Link className="card-link" href={`/projects/${x.slug}`}>Read case study ↗</Link>{x.url&&<a className="card-link" href={x.url} target="_blank" rel="noreferrer">Open live project ↗</a>}</article>)}</div></section></main>}
+import {getPublishedPage,getPublishedCollection} from '@/lib/public-data';
+import {SectionRenderer} from '@/components/section-renderer';
+import {Reveal,RevealItem} from '@/components/motion-system';
+import Link from 'next/link';
+import type {Metadata} from 'next';
+export const metadata:Metadata={title:'Projects'};
+export default async function Projects(){
+  const p=await getPublishedPage('projects');
+  const projects=await getPublishedCollection('projects');
+  return <main id="main"><SectionRenderer sections={p?.sections||[]}/><section className="content-section section-wrap"><Reveal className="section-intro"><p className="eyebrow">CASE STUDIES</p><h2>More about the work</h2></Reveal>{projects.length?<div className="card-grid">{projects.map((x:any,i:number)=><RevealItem key={x.id} index={i} className="service-card-wrap"><article className="service-card"><span className="card-index">PROJECT / {String(i+1).padStart(2,'0')}</span><h3>{x.title}</h3><p>{x.summary||x.body}</p><Link className="card-link" href={`/projects/${x.slug}`}>Read case study ↗</Link>{x.url&&<a className="card-link" href={x.url} target="_blank" rel="noreferrer">Open live project ↗</a>}</article></RevealItem>)}</div>:<Reveal className="empty-state">New projects will appear here when published.</Reveal>}</section></main>
+}

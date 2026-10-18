@@ -1,1 +1,11 @@
-import {getPublishedPage,getPublishedCollection} from '@/lib/public-data';import {SectionRenderer} from '@/components/section-renderer';import Link from 'next/link';import type {Metadata} from 'next';export const metadata:Metadata={title:'Insights'};export default async function Insights(){const p=await getPublishedPage('insights');const posts=await getPublishedCollection('posts');return <main id="main"><SectionRenderer sections={p?.sections||[]}/><section className="content-section section-wrap"><div className="section-intro"><p className="eyebrow">ARTICLES</p><h2>Latest notes</h2></div>{posts.length?<div className="card-grid">{posts.map((x:any)=><article className="service-card" key={x.id}><p className="eyebrow">{x.category||'INSIGHT'}</p><h3>{x.title}</h3><p>{x.excerpt}</p><Link className="card-link" href={`/insights/${x.slug}`}>Read article ↗</Link></article>)}</div>:<div className="empty-state">New articles will appear here when published.</div>}</section></main>}
+import {getPublishedPage,getPublishedCollection} from '@/lib/public-data';
+import {SectionRenderer} from '@/components/section-renderer';
+import {Reveal,RevealItem} from '@/components/motion-system';
+import Link from 'next/link';
+import type {Metadata} from 'next';
+export const metadata:Metadata={title:'Insights'};
+export default async function Insights(){
+  const p=await getPublishedPage('insights');
+  const posts=await getPublishedCollection('posts');
+  return <main id="main"><SectionRenderer sections={p?.sections||[]}/><section className="content-section section-wrap"><Reveal className="section-intro"><p className="eyebrow">ARTICLES</p><h2>Latest notes</h2></Reveal>{posts.length?<div className="card-grid">{posts.map((x:any,i:number)=><RevealItem className="service-card-wrap" index={i} key={x.id}><article className="service-card"><p className="eyebrow">{x.category||'INSIGHT'}</p><h3>{x.title}</h3><p>{x.excerpt}</p><Link className="card-link" href={`/insights/${x.slug}`}>Read article ↗</Link></article></RevealItem>)}</div>:<Reveal className="empty-state">New articles will appear here when published.</Reveal>}</section></main>
+}
