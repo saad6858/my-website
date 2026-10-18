@@ -1,0 +1,243 @@
+
+name: Diagnose Website - Full Repository QA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-diagnostics-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    name: Full repository diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Inventory repository
+        id: inventory
+        shell: bash
+        run: |
+          mkdir -p qa-results
+          {
+            echo "## Repository inventory"
+            echo ""
+            echo "- Commit: $(git rev-parse HEAD)"
+            echo "- Branch: $(git branch --show-current)"
+            echo "- Tracked files: $(git ls-files | wc -l)"
+            echo "- Node: $(node --version)"
+            echo "- npm: $(npm --version)"
+            echo ""
+            echo "### Package scripts"
+            node -e 'console.log(JSON.stringify(require("./package.json").scripts || {}, null, 2))'
+            echo ""
+            echo "### Repository files"
+            git ls-files
+          } > qa-results/inventory.txt
+          cat qa-results/inventory.txt
+
+      - name: Check package and lockfile consistency
+        id: lockfile
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+            result=$?
+          else
+            echo "WARNING: package-lock.json is missing; using npm install."
+            npm install --no-audit --no-fund
+            result=$?
+          fi
+          echo "$result" > qa-results/install.exit
+          exit "$result"
+
+      - name: Record dependency installation result
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p qa-results
+          if [ -f qa-results/install.exit ]; then
+            echo "Dependency installation exit code: $(cat qa-results/install.exit)" \
+              > qa-results/install-status.txt
+          else
+            echo "Dependency installation did not complete." \
+              > qa-results/install-status.txt
+          fi
+          npm ls --all --json > qa-results/dependency-tree.json 2> qa-results/dependency-tree-errors.txt || true
+          npm audit --json > qa-results/npm-audit.json 2> qa-results/npm-audit-errors.txt || true
+
+      - name: TypeScript check
+        id: typescript
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          if [ ! -x node_modules/.bin/tsc ]; then
+            echo "TypeScript compiler unavailable; dependency installation may have failed."
+            echo 127 > qa-results/typescript.exit
+            exit 127
+          fi
+          node_modules/.bin/tsc --noEmit --pretty false \
+            > qa-results/typescript.log 2>&1
+          result=$?
+          echo "$result" > qa-results/typescript.exit
+          cat qa-results/typescript.log
+          exit "$result"
+
+      - name: ESLint check
+        id: lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          if [ -x node_modules/.bin/eslint ]; then
+            node_modules/.bin/eslint . --no-cache \
+              > qa-results/eslint.log 2>&1
+            result=$?
+          elif node -e 'process.exit(require("./package.json").scripts?.lint ? 0 : 1)'; then
+            npm run lint -- --no-cache \
+              > qa-results/eslint.log 2>&1
+            result=$?
+          else
+            echo "No ESLint executable or lint script found." \
+              > qa-results/eslint.log
+            result=127
+          fi
+          echo "$result" > qa-results/eslint.exit
+          cat qa-results/eslint.log
+          exit "$result"
+
+      - name: Production build
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set +e
+          if [ "$(cat qa-results/install.exit 2>/dev/null || echo 127)" != "0" ]; then
+            echo "Build attempted even though dependency installation failed." \
+              > qa-results/build.log
+          fi
+          npm run build > qa-results/build.log 2>&1
+          result=$?
+          echo "$result" > qa-results/build.exit
+          cat qa-results/build.log
+          exit "$result"
+
+      - name: Check formatting if supported
+        id: formatting
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          if node -e 'process.exit(require("./package.json").scripts?.format ? 0 : 1)'; then
+            npm run format -- --check > qa-results/format.log 2>&1
+            result=$?
+          elif [ -x node_modules/.bin/prettier ]; then
+            node_modules/.bin/prettier --check \
+              "**/*.{js,jsx,ts,tsx,json,css,md,yml,yaml}" \
+              > qa-results/format.log 2>&1
+            result=$?
+          else
+            echo "No formatting script or Prettier installation found." \
+              > qa-results/format.log
+            result=127
+          fi
+          echo "$result" > qa-results/format.exit
+          cat qa-results/format.log
+          exit "$result"
+
+      - name: Check for merge markers and whitespace errors
+        id: source-hygiene
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          git diff --check HEAD~1 HEAD > qa-results/git-diff-check.log 2>&1
+          diff_result=$?
+          git grep -n -I -E \
+            '^(<<<<<<< |=======|>>>>>>> )' \
+            -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.css' '*.yml' '*.yaml' \
+            > qa-results/merge-markers.log 2>&1
+          marker_result=$?
+          {
+            echo "git diff --check exit: $diff_result"
+            echo "merge-marker search exit: $marker_result"
+            echo "Note: grep exit 1 means no matching markers were found."
+          } > qa-results/source-hygiene-status.txt
+          cat qa-results/source-hygiene-status.txt
+          exit 0
+
+      - name: Scan for accidentally committed environment files
+        id: env-scan
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          git ls-files | grep -E '(^|/)\.env($|\.)' \
+            | grep -v -E '(^|/)\.env\.example$|(^|/)\.env\.sample$|(^|/)\.env\.template$' \
+            > qa-results/tracked-env-files.txt
+          result=$?
+          if [ "$result" -eq 0 ]; then
+            echo "WARNING: environment-like files are tracked. Review filenames and contents privately."
+          else
+            echo "No environment-like files found, or search was inconclusive."
+          fi
+          # Never print environment file contents or secret values.
+          exit 0
+
+      - name: Build diagnostic summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p qa-results
+          {
+            echo "# Website QA diagnostic summary"
+            echo ""
+            echo "Commit: $(git rev-parse HEAD)"
+            echo ""
+            for check in install typescript eslint build format; do
+              file="qa-results/${check}.exit"
+              if [ -f "$file" ]; then
+                code=$(cat "$file")
+                if [ "$code" = "0" ]; then
+                  echo "- $check: PASS"
+                else
+                  echo "- $check: FAIL (exit $code)"
+                fi
+              else
+                echo "- $check: NOT COMPLETED"
+              fi
+            done
+            echo ""
+            echo "See the individual logs and dependency audit in the workflow artifact."
+            echo "Build and lint checks may expose additional errors after earlier failures."
+          } > qa-results/SUMMARY.md
+          cat qa-results/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload all diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-qa-diagnostics
+          path: qa-results/
+          if-no-files-found: warn
+          retention-days: 14
