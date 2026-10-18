@@ -1,5 +1,5 @@
 
-name: Repair Website Source and Verify Build
+name: Repair Website Type Errors and Verify
 
 on:
   workflow_dispatch:
@@ -26,110 +26,48 @@ jobs:
         with:
           node-version: 22
 
-      - name: Repair raw newlines inside quoted strings
+      - name: Repair site settings and section types
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('node:fs');
 
-          const file = 'lib/content.ts';
-          const source = fs.readFileSync(file, 'utf8');
-          let output = '';
-          let state = 'normal';
-          let changes = 0;
+          function replaceExactly(file, before, after, description) {
+            const source = fs.readFileSync(file, 'utf8');
+            const count = source.split(before).length - 1;
 
-          for (let i = 0; i < source.length; i++) {
-            const ch = source[i];
-            const next = source[i + 1];
-
-            if (state === 'line-comment') {
-              output += ch;
-              if (ch === '\n') state = 'normal';
-              continue;
+            if (count === 0) {
+              if (source.includes(after)) {
+                console.log(`Already applied: ${description}`);
+                return;
+              }
+              throw new Error(`Could not find expected source for: ${description} in ${file}`);
             }
 
-            if (state === 'block-comment') {
-              output += ch;
-              if (ch === '*' && next === '/') {
-                output += next;
-                i++;
-                state = 'normal';
-              }
-              continue;
+            if (count !== 1) {
+              throw new Error(`Expected exactly one match for ${description}; found ${count}`);
             }
 
-            if (state === 'template') {
-              output += ch;
-              if (ch === '\\' && i + 1 < source.length) {
-                output += source[++i];
-              } else if (ch === '`') {
-                state = 'normal';
-              }
-              continue;
-            }
-
-            if (state === 'single' || state === 'double') {
-              if (ch === '\\' && i + 1 < source.length) {
-                output += ch + source[++i];
-                continue;
-              }
-
-              if (
-                (state === 'single' && ch === "'") ||
-                (state === 'double' && ch === '"')
-              ) {
-                output += ch;
-                state = 'normal';
-                continue;
-              }
-
-              if (ch === '\n' || ch === '\r') {
-                output += '\\n';
-                if (ch === '\r' && next === '\n') i++;
-                while (source[i + 1] === ' ' || source[i + 1] === '\t') i++;
-                changes++;
-                continue;
-              }
-
-              output += ch;
-              continue;
-            }
-
-            if (ch === '/' && next === '/') {
-              output += '//';
-              i++;
-              state = 'line-comment';
-            } else if (ch === '/' && next === '*') {
-              output += '/*';
-              i++;
-              state = 'block-comment';
-            } else if (ch === "'") {
-              output += ch;
-              state = 'single';
-            } else if (ch === '"') {
-              output += ch;
-              state = 'double';
-            } else if (ch === '`') {
-              output += ch;
-              state = 'template';
-            } else {
-              output += ch;
-            }
+            fs.writeFileSync(file, source.replace(before, after));
+            console.log(`Applied: ${description}`);
           }
 
-          if (changes > 0) {
-            fs.writeFileSync(file, output);
-          }
+          replaceExactly(
+            'lib/content.ts',
+            "items?:Array<{title:string;body:string;href?:string;label?:string}>",
+            "items?:Array<{title:string;body?:string;href?:string;label?:string}>",
+            'Allow optional section item body text'
+          );
 
-          console.log(`Repaired raw newlines: ${changes}`);
-
-          if (state === 'single' || state === 'double') {
-            console.error('An unterminated quoted string remains.');
-            process.exit(1);
-          }
+          replaceExactly(
+            'lib/content.ts',
+            "siteUrl:'https://smautomations.tech',footerText:",
+            "siteUrl:'https://smautomations.tech',seoTitle:'SM Automations — Intelligent Systems',seoDescription:'Custom AI assistants, intelligent workflow automation and agentic systems that help businesses work smarter.',socialImage:'',footerText:",
+            'Add metadata fields to initial site settings'
+          );
           NODE
 
-      - name: Install dependencies without cache
+      - name: Install dependencies without npm cache
         run: npm install --no-package-lock --no-audit --no-fund
 
       - name: Run TypeScript check
@@ -144,19 +82,18 @@ jobs:
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Run ESLint and save full report
-        id: lint
+      - name: Run ESLint report
+        if: always()
         shell: bash
         run: |
           set +e
           npm run lint > repair-logs/eslint.log 2>&1
-          result=$?
           cat repair-logs/eslint.log
-          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
 
       - name: Run production build
         id: build
+        if: steps.typecheck.outputs.exit_code == '0'
         shell: bash
         run: |
           set +e
@@ -166,17 +103,17 @@ jobs:
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Save verification summary
+      - name: Record verification summary
         if: always()
         shell: bash
         run: |
           {
             echo "TypeScript exit: ${{ steps.typecheck.outputs.exit_code }}"
-            echo "ESLint exit: ${{ steps.lint.outputs.exit_code }}"
-            echo "Build exit: ${{ steps.build.outputs.exit_code }}"
+            echo "Production build exit: ${{ steps.build.outputs.exit_code }}"
+            echo "ESLint is recorded separately and is not a build gate."
           } > repair-logs/summary.txt
 
-      - name: Upload all verification logs
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -188,15 +125,15 @@ jobs:
       - name: Require TypeScript and production build to pass
         if: steps.typecheck.outputs.exit_code != '0' || steps.build.outputs.exit_code != '0'
         run: |
-          echo "TypeScript or production build still fails. Download the diagnostics artifact."
+          echo "Verification failed. Download website-repair-diagnostics for exact errors."
           exit 1
 
-      - name: Remove temporary repair workflow after successful build
+      - name: Remove temporary workflow after successful verification
         if: steps.typecheck.outputs.exit_code == '0' && steps.build.outputs.exit_code == '0'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/repair-website.yml
-          git commit -m "Remove temporary repair workflow after build verification"
+          git commit -m "Remove temporary repair workflow after successful verification"
           git push origin HEAD:main
