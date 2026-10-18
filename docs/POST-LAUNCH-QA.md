@@ -4,10 +4,10 @@ Record PASS / FAIL / BLOCKED / NOT RUN with evidence; do not mark an item passed
 
 ## Public journeys
 - [ ] Test Home, About, Services, Projects, project detail, Industry directory, dental example, FAQ, Insights, Contact and Privacy.
-- [ ] Test both owner-controlled themes (Cinematic Obsidian and Warm Editorial); confirm there is no theme switcher for visitors and the selected admin theme persists globally.
-- [ ] Test the intro skip, route transitions, scroll progress, hero diagram motion, word/section reveals, staggered service cards, horizontal rail controls, CTA atmosphere, reduced motion, keyboard use and mobile behavior.
+- [ ] Test all six administrator-selected layouts (Cinema, Editorial, Swiss Grid, Split-Screen, Terminal, Story Timeline) against public pages and CMS-created pages. Test all six palettes (Signal, Cobalt, Editorial, Teal, Terminal, Blueprint); verify visitors have no theme toggle and the chosen layout/palette remains consistent on reload.
+- [ ] Test intro skip, reduced motion, keyboard use, scroll reveals, hover/focus motion, mobile menu and mobile viewport.
 - [ ] Create a new industry page in Admin with an `industries/example` slug, publish, verify public URL and directory listing, edit, unpublish and republish.
-- [ ] Check all links, favicon, canonical metadata, social metadata, sitemap and robots. Verify https://smautomations.tech and www redirect behavior.
+- [ ] Check all links, favicon, canonical metadata, social metadata, sitemap and robots.
 
 ## Admin and content
 - [ ] Email/password sign-in and Google sign-in; non-admin authenticated user denied by every admin API.
@@ -16,7 +16,7 @@ Record PASS / FAIL / BLOCKED / NOT RUN with evidence; do not mark an item passed
 - [ ] Verify draft changes never appear publicly until Publish; inspect direct URLs and sitemap.
 - [ ] Edit sections, copy, SEO fields, global brand/theme/footer/contact settings, FAQs, projects, posts and industry pages.
 - [ ] Verify contact lead statuses, notes, follow-up date, email notification and error handling.
-- [ ] Upload an image under 15 MB and a video under 95 MB with alt text; confirm Cloudinary URL and resource metadata. Verify videos above 95 MB and images above 15 MB are rejected before upload, allowed video formats work, progress is announced, and account-level Cloudinary limits produce a clear failure.
+- [ ] Upload a media file with alt text, confirm Cloudinary URL and metadata; test unsupported formats, images at 15 MiB and above, videos at exactly 95 MiB and above, Cloudinary errors, and metadata persistence.
 
 ## Security and privacy
 - [ ] Check anonymous API access, ordinary signed-in user access, admin access, expired/revoked token handling.
