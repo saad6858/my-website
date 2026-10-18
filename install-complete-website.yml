@@ -1,0 +1,193 @@
+name: Replace repository with website ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_replace:
+        description: 'Type REPLACE to delete all existing repository files and install the ZIP contents.'
+        required: true
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: replace-repository-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  replace:
+    name: Replace the complete repository tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      - name: Require destructive replacement confirmation
+        env:
+          CONFIRM_REPLACE: ${{ inputs.confirm_replace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$CONFIRM_REPLACE" != "REPLACE" ]]; then
+            echo '::error::Stopped without changing the repository. Re-run and type REPLACE to confirm.'
+            exit 1
+          fi
+
+      - name: Validate the uploaded ZIP and safely extract it outside the repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP='saad-maqbool-complete-website.zip'
+          test -f "$ZIP" || { echo "::error::Missing $ZIP at the repository root."; exit 1; }
+          python3 - <<'PY'
+          import os, re, shutil, stat, sys, zipfile
+          archive = 'saad-maqbool-complete-website.zip'
+          destination = '/tmp/sm-automations-website-archive'
+          required = {
+              'package.json', 'tsconfig.json', 'next.config.ts',
+              'app/layout.tsx', 'app/page.tsx', 'app/admin/page.tsx',
+              'components/section-renderer.tsx', '.env.example', 'README.md'
+          }
+          secret_pattern = re.compile(
+              r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|'
+              r'AKIA[0-9A-Z]{16}|sk_live_[A-Za-z0-9]{12,}|'
+              r'gh[pousr]_[A-Za-z0-9]{20,}'
+          )
+          errors = []
+          try:
+              if os.path.exists(destination):
+                  shutil.rmtree(destination)
+              with zipfile.ZipFile(archive) as z:
+                  if z.testzip():
+                      errors.append('The ZIP contains a corrupt entry.')
+                  names = set()
+                  total_size = 0
+                  for info in z.infolist():
+                      name = info.filename
+                      if name.endswith('/'):
+                          continue
+                      parts = name.split('/')
+                      if name.startswith('/') or '\\' in name or '..' in parts or re.match(r'^[A-Za-z]:', name):
+                          errors.append('Unsafe archive path: ' + name)
+                          continue
+                      if name == '.git' or name.startswith('.git/'):
+                          errors.append('The archive must not contain Git metadata: ' + name)
+                      if name == '.env' or (name.startswith('.env.') and name != '.env.example'):
+                          errors.append('Environment secrets are not permitted in the ZIP: ' + name)
+                      if name.startswith('.github/'):
+                          errors.append('Keep the one-time installer workflow outside the website ZIP: ' + name)
+                      if ((info.external_attr >> 16) & 0o170000) == stat.S_IFLNK:
+                          errors.append('Symlinks are not allowed: ' + name)
+                      total_size += info.file_size
+                      names.add(name)
+                      if name.lower().endswith(('.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.css', '.yml', '.yaml', '.rules')):
+                          text = z.read(info).decode('utf-8', errors='ignore')
+                          if secret_pattern.search(text):
+                              errors.append('Potential credential found in: ' + name)
+                  missing = required - names
+                  if missing:
+                      errors.append('Missing required website files: ' + ', '.join(sorted(missing)))
+                  if total_size > 100 * 1024 * 1024:
+                      errors.append('ZIP expands beyond the 100 MB safety limit.')
+                  if not errors:
+                      z.extractall(destination)
+                  print(f'Archive contains {len(names)} files and {total_size:,} uncompressed bytes.')
+          except Exception as exc:
+              errors.append('ZIP validation/extraction failed: ' + str(exc))
+          if errors:
+              for error in errors:
+                  print('::error::' + error)
+              sys.exit(1)
+          # Ensure required files are at archive root, not nested one directory deeper.
+          for path in required:
+              if not os.path.isfile(os.path.join(destination, path)):
+                  print('::error::Expected file at ZIP root: ' + path)
+                  sys.exit(1)
+          print('ZIP passed validation and was extracted outside the repository.')
+          PY
+
+      - name: Remove every previous repository file and install only ZIP contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE='/tmp/sm-automations-website-archive'
+
+          # This deliberately removes the uploaded ZIP, the currently running workflow,
+          # all other workflows, old source files, old configs, and any untracked files.
+          # The .git directory is the only thing preserved from the previous checkout.
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf -- {} +
+
+          # Copy every file and hidden file from the ZIP extraction to repository root.
+          cp -a "$SOURCE"/. .
+
+          # Compare every extracted file against the ZIP manifest before deleting temp data.
+          python3 - <<'PY'
+          import os, sys
+          root='.'
+          expected=set()
+          for base, dirs, files in os.walk('/tmp/sm-automations-website-archive'):
+              for name in files:
+                  expected.add(os.path.relpath(os.path.join(base,name), '/tmp/sm-automations-website-archive'))
+          actual=set()
+          for base, dirs, files in os.walk(root):
+              dirs[:] = [d for d in dirs if not (base == root and d == '.git')]
+              for name in files:
+                  path=os.path.join(base,name)
+                  rel=os.path.relpath(path, root)
+                  if rel == '.git' or rel.startswith('.git' + os.sep):
+                      continue
+                  actual.add(rel)
+          if actual != expected:
+              print('::error::Extracted repository files do not exactly match the ZIP.')
+              print('Only in ZIP:', sorted(expected-actual))
+              print('Only in repository:', sorted(actual-expected))
+              sys.exit(1)
+          print(f'Exact file-set match confirmed: {len(actual)} files.')
+          PY
+
+          # Remove temporary extraction data; it is outside the Git working tree anyway.
+          rm -rf -- "$SOURCE"
+
+          # Fail closed unless the ZIP contents now occupy the repository root.
+          test -f package.json
+          test -f app/page.tsx
+          test -f components/section-renderer.tsx
+          test ! -e saad-maqbool-complete-website.zip
+          test ! -e .github/workflows/install-complete-website.yml
+          echo 'Repository working tree now contains only the validated ZIP contents.'
+          find . -mindepth 1 -maxdepth 2 ! -path './.git*' -print | sort | head -200
+
+      - name: Commit and push the exact replacement tree
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo '::error::No repository changes were detected after extraction; refusing to report a replacement commit.'
+            exit 1
+          fi
+          git commit -m 'Replace entire repository with website ZIP contents'
+          git push origin "HEAD:${TARGET_BRANCH}"
+          echo 'Replacement committed. Old repository files, uploaded ZIP, and installer workflow are removed from the resulting commit.'
+
+      - name: Confirm no installer files remain in the replacement tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e saad-maqbool-complete-website.zip
+          test ! -e .github/workflows/install-complete-website.yml
+          git ls-tree -r --name-only HEAD | grep -E '(^|/)install-complete-website\.yml$|^saad-maqbool-complete-website\.zip$' && {
+            echo '::error::Installer or ZIP unexpectedly exists in committed tree.'
+            exit 1
+          } || true
+          echo 'Final tree check passed. No installer ZIP or one-time workflow remains.'
