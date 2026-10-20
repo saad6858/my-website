@@ -1,0 +1,92 @@
+name: Apply SM Automations fixes
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_apply:
+        description: Type APPLY to install this fix bundle
+        required: true
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-sm-automations-fixes-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      - name: Require confirmation
+        env:
+          CONFIRM_APPLY: ${{ inputs.confirm_apply }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_APPLY" = "APPLY" || { echo "::error::Enter APPLY to continue."; exit 1; }
+
+      - name: Validate fix ZIP
+        run: |
+          set -euo pipefail
+          ZIP='sm-automations-fixes.zip'
+          test -f "$ZIP" || { echo "::error::Upload sm-automations-fixes.zip to the repository root."; exit 1; }
+          python3 - <<'PY'
+          import re, stat, sys, zipfile
+          p='sm-automations-fixes.zip'
+          required={'package.json','app/layout.tsx','app/page.tsx','app/admin/page.tsx','app/projects/page.tsx','app/api/admin/settings/route.ts','components/intro-gate.tsx','app/globals.css'}
+          errors=[]
+          try:
+              with zipfile.ZipFile(p) as z:
+                  bad=z.testzip()
+                  if bad: errors.append('Corrupt ZIP entry: '+bad)
+                  names=set(); total=0
+                  for i in z.infolist():
+                      n=i.filename
+                      if n.endswith('/'): continue
+                      names.add(n); total+=i.file_size
+                      parts=n.split('/')
+                      if n.startswith('/') or '\\\\' in n or '..' in parts: errors.append('Unsafe path: '+n)
+                      if ((i.external_attr>>16)&0o170000)==stat.S_IFLNK: errors.append('Symlink not allowed: '+n)
+                      if n=='.env' or (n.startswith('.env.') and n!='.env.example'): errors.append('Environment file not allowed: '+n)
+                      if n.startswith('.github/') or n.startswith('.git/'): errors.append('Workflow/Git metadata must stay outside ZIP: '+n)
+                  missing=required-names
+                  if missing: errors.append('Missing required files: '+', '.join(sorted(missing)))
+                  if total>30*1024*1024: errors.append('ZIP expands beyond 30 MB.')
+          except Exception as e: errors.append(str(e))
+          if errors:
+              for e in errors: print('::error::'+e)
+              sys.exit(1)
+          print('Fix ZIP validation passed.')
+          PY
+
+      - name: Apply files from archive
+        run: |
+          set -euo pipefail
+          unzip -oq sm-automations-fixes.zip -d .
+          test -f package.json
+          test -f app/layout.tsx
+          test -f components/intro-gate.tsx
+          rm -f sm-automations-fixes.zip .github/workflows/apply-sm-automations-fixes.yml
+          rmdir .github/workflows .github 2>/dev/null || true
+          git add -A
+
+      - name: Commit fixes
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix site layout, project thumbnails, intro controls and settings'
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Hand off deployment to Vercel
+        run: echo 'No build or deployment was run by this workflow. Vercel handles the connected Git deployment.'
