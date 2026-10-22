@@ -1,12 +1,33 @@
 'use client';
 import Link from 'next/link';
-import {Fragment,useRef} from 'react';
+import {Fragment,useRef,type CSSProperties} from 'react';
 import {motion} from 'motion/react';
 import {ArrowLeft,ArrowRight,ArrowUpRight,MoveUpRight,Plus} from 'lucide-react';
 import type {Section} from '@/lib/content';
 import {Monogram} from './monogram';
 import {AutomationArt} from './automation-art';
 import {Reveal,RevealItem} from './motion-system';
+
+function safeCssSize(value:unknown):string|undefined{
+  if(typeof value!=='string')return undefined;
+  const v=value.trim();
+  if(!v)return undefined;
+  if(v==='auto')return 'auto';
+  if(/^\d{1,4}(px|vh|vw|rem|%)?$/.test(v))return v;
+  return undefined;
+}
+function itemCardStyle(item:Record<string,unknown>):CSSProperties|undefined{
+  const cardHeight=safeCssSize(item.cardHeight);
+  const thumbHeight=safeCssSize(item.thumbHeight);
+  const thumbHeightMobile=safeCssSize(item.thumbHeightMobile);
+  if(!cardHeight&&!thumbHeight&&!thumbHeightMobile)return undefined;
+  const style:CSSProperties & Record<string,string>={};
+  if(cardHeight){style.height=cardHeight;if(cardHeight!=='auto')style.minHeight=cardHeight;}
+  if(thumbHeight)style['--project-thumb-height']=thumbHeight;
+  if(thumbHeightMobile)style['--project-thumb-height-mobile']=thumbHeightMobile;
+  return style;
+}
+
 
 function LineHeadline({text,hero=false}:{text:string;hero?:boolean}){
   const lines=text.split('\n');
@@ -39,7 +60,7 @@ function HeroSection({section}:{section:Section}){
 function SignalCard({item,index}:{item:NonNullable<Section['items']>[number];index:number}){
   const accent=['red','violet','blue','silver'][index%4];
   const href=item.href||'/contact';
-  return <RevealItem index={index} className={`showcase-card showcase-${accent}`}><article className="showcase-card-inner"><div className={`showcase-art showcase-art-${index%4}`} aria-hidden="true"><div className="showcase-art-grid"/><div className="showcase-art-orbit orbit-a"/><div className="showcase-art-orbit orbit-b"/><div className="showcase-art-core">{index===0?<Monogram className="showcase-monogram"/>:<span>{String(index+1).padStart(2,'0')}</span>}</div><span className="showcase-art-label">{index===0?'MULTI-AGENT / RAG':index===1?'SYSTEM DESIGN':index===2?'WORKFLOW ENGINE':'INTELLIGENT LAYER'}</span></div><div className="showcase-card-content"><div className="showcase-card-kicker"><span>CASE / {String(index+1).padStart(2,'0')}</span><span className="showcase-card-mark">SM<span> ↗</span></span></div><h3>{item.title}</h3><p>{item.body}</p><Link className="card-link" href={href}>{item.label||'Explore the work'}<ArrowUpRight size={15}/></Link></div></article></RevealItem>;
+  return <RevealItem index={index} className={`showcase-card showcase-${accent}`}><article className="showcase-card-inner" style={itemCardStyle(item as any)}><div className={`showcase-art showcase-art-${index%4}`} aria-hidden="true"><div className="showcase-art-grid"/><div className="showcase-art-orbit orbit-a"/><div className="showcase-art-orbit orbit-b"/><div className="showcase-art-core">{index===0?<Monogram className="showcase-monogram"/>:<span>{String(index+1).padStart(2,'0')}</span>}</div><span className="showcase-art-label">{index===0?'MULTI-AGENT / RAG':index===1?'SYSTEM DESIGN':index===2?'WORKFLOW ENGINE':'INTELLIGENT LAYER'}</span></div><div className="showcase-card-content"><div className="showcase-card-kicker"><span>CASE / {String(index+1).padStart(2,'0')}</span><span className="showcase-card-mark">SM<span> ↗</span></span></div><h3>{item.title}</h3><p>{item.body}</p><Link className="card-link" href={href}>{item.label||'Explore the work'}<ArrowUpRight size={15}/></Link></div></article></RevealItem>;
 }
 
 function HorizontalShowcase({section}:{section:Section}){
@@ -53,7 +74,7 @@ export function SectionRenderer({sections}:{sections:Section[]}){
     const items=s.items||[];
     if(s.type==='hero')return <HeroSection section={s} key={s.id}/>;
     if(s.type==='featured'||s.type==='horizontal-showcase')return <HorizontalShowcase section={s} key={s.id}/>;
-    if(s.type==='cards')return <section key={s.id} className="content-section section-wrap"><div className="section-intro-grid"><Reveal className="section-intro"><p className="eyebrow">{s.eyebrow||'WHAT WE BUILD'}</p><h2>{s.title}</h2>{s.body&&<p>{s.body}</p>}</Reveal><Reveal direction="left" delay={.12} className="section-side-note"><span className="side-note-symbol"><Plus size={15}/></span><span>Designed for the way your business actually works.</span></Reveal></div><div className="card-grid">{items.map((it,i)=><RevealItem key={`${s.id}-${i}`} index={i} className={`service-card-wrap service-card-wrap-${i%3}`}><article className="service-card"><div className="service-card-top"><span className="card-index">{String(i+1).padStart(2,'0')}</span><span className="card-trace"><i/><i/><i/></span></div><h3>{it.title}</h3><p>{it.body}</p>{it.href&&<Link href={it.href} className="card-link">Explore <ArrowUpRight size={16}/></Link>}<div className="card-spotlight" aria-hidden="true"/></article></RevealItem>)}</div></section>;
+    if(s.type==='cards')return <section key={s.id} className="content-section section-wrap"><div className="section-intro-grid"><Reveal className="section-intro"><p className="eyebrow">{s.eyebrow||'WHAT WE BUILD'}</p><h2>{s.title}</h2>{s.body&&<p>{s.body}</p>}</Reveal><Reveal direction="left" delay={.12} className="section-side-note"><span className="side-note-symbol"><Plus size={15}/></span><span>Designed for the way your business actually works.</span></Reveal></div><div className="card-grid">{items.map((it,i)=><RevealItem key={`${s.id}-${i}`} index={i} className={`service-card-wrap service-card-wrap-${i%3}`}><article className="service-card" style={itemCardStyle(it as any)}><div className="service-card-top"><span className="card-index">{String(i+1).padStart(2,'0')}</span><span className="card-trace"><i/><i/><i/></span></div><h3>{it.title}</h3><p>{it.body}</p>{it.href&&<Link href={it.href} className="card-link">Explore <ArrowUpRight size={16}/></Link>}<div className="card-spotlight" aria-hidden="true"/></article></RevealItem>)}</div></section>;
     if(['process','steps','timeline','stats'].includes(s.type))return <section key={s.id} className={`cms-sequence section-wrap cms-sequence-${s.type}`}><Reveal className="section-intro"><p className="eyebrow">{s.eyebrow|| (s.type==='timeline'?'THE JOURNEY':s.type==='stats'?'AT A GLANCE':'HOW IT WORKS')}</p><h2>{s.title}</h2>{s.body&&<p>{s.body}</p>}</Reveal><div className="sequence-grid">{items.map((it,i)=>{const data=it as any;return <RevealItem key={`${s.id}-${i}`} index={i} className="sequence-item"><article><span className="sequence-number">{s.type==='stats'?(data.value||data.metric||it.title):String(i+1).padStart(2,'0')}</span>{data.date&&<span className="sequence-date">{data.date}</span>}<h3>{s.type==='stats'?(data.label||it.body||it.title):(data.title||it.title)}</h3>{s.type!=='stats'&&<p>{it.body}</p>}{data.href&&<Link className="card-link" href={data.href}>{data.label||'Explore'} <ArrowUpRight size={15}/></Link>}</article></RevealItem>})}</div></section>;
     if(s.type==='faq')return <section key={s.id} className="cms-faq-section section-wrap"><Reveal className="section-intro"><p className="eyebrow">{s.eyebrow||'COMMON QUESTIONS'}</p><h2>{s.title}</h2>{s.body&&<p>{s.body}</p>}</Reveal><div className="cms-faq-list">{items.map((it,i)=><Reveal key={`${s.id}-${i}`} delay={Math.min(i*.04,.24)}><details><summary>{it.title}</summary><p>{it.body}</p></details></Reveal>)}</div></section>;
     if(s.type==='gallery'||s.type==='media')return <section key={s.id} className="cms-gallery-section section-wrap"><Reveal className="section-intro"><p className="eyebrow">{s.eyebrow||'MEDIA / DETAIL'}</p><h2>{s.title}</h2>{s.body&&<p>{s.body}</p>}</Reveal><div className="cms-gallery-grid">{(items.length?items:[{title:s.title||'Featured image',body:s.body,image:s.image}]).map((it,i)=>{const data=it as any;const src=typeof (data.image||data.url||data.src)==='string'?(data.image||data.url||data.src):'';return <RevealItem key={`${s.id}-${i}`} index={i} className="cms-gallery-item"><figure>{src.startsWith('https://')?<img src={src} alt={data.alt||data.title||s.title||'SM Automations media'} loading="lazy" decoding="async"/>:<div className="cms-gallery-placeholder"><Monogram className="showcase-monogram"/></div>}<figcaption><strong>{data.title||''}</strong>{data.body&&<span>{data.body}</span>}</figcaption></figure></RevealItem>})}</div></section>;
