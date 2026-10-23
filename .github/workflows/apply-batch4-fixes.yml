@@ -1,0 +1,55 @@
+name: Apply Batch 4 fixes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require ZIP
+        run: |
+          if [ ! -f batch4-fixes.zip ]; then
+            echo "batch4-fixes.zip not found at repository root."
+            exit 1
+          fi
+
+      - name: Extract and apply
+        run: |
+          set -e
+          mkdir -p /tmp/b4x
+          unzip -o batch4-fixes.zip -d /tmp/b4x
+          mkdir -p components public app/api/admin/settings app/admin
+          cp -f /tmp/b4x/components/brand-logo.tsx components/brand-logo.tsx
+          cp -f /tmp/b4x/components/monogram.tsx components/monogram.tsx
+          cp -f /tmp/b4x/app/globals.css app/globals.css
+          cp -f /tmp/b4x/app/layout.tsx app/layout.tsx
+          cp -f /tmp/b4x/app/admin/page.tsx app/admin/page.tsx
+          cp -f /tmp/b4x/app/api/admin/settings/route.ts app/api/admin/settings/route.ts
+          cp -f /tmp/b4x/public/brand-logo.svg public/brand-logo.svg
+          cp -f /tmp/b4x/public/icon.svg public/icon.svg
+          if [ -f /tmp/b4x/public/smautomations-logo-source.svg ]; then
+            cp -f /tmp/b4x/public/smautomations-logo-source.svg public/smautomations-logo-source.svg
+          fi
+          ls -la public/brand-logo.svg public/icon.svg components/brand-logo.tsx
+          wc -c public/brand-logo.svg
+
+      - name: Remove ZIP
+        run: rm -f batch4-fixes.zip
+
+      - name: Commit and push
+        run: |
+          git config user.name "batch4-fix-bot"
+          git config user.email "bot@local"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Batch 4: official path-traced logo (owner SVG), themes slate/ink/forest, admin status+size selects, theme allowlist"
+            git push
+          fi
