@@ -43,8 +43,8 @@ export async function PUT(req:Request){
     if(typeof clean.accent==='string'&&!/^#[0-9a-fA-F]{6}$/.test(clean.accent)){
       return NextResponse.json({error:'Accent must be a six-digit hex colour.'},{status:400});
     }
-    if(clean.themeDefault&&!['dark','light'].includes(String(clean.themeDefault))){
-      return NextResponse.json({error:'Choose Cinematic Obsidian or Warm Editorial.'},{status:400});
+    if(clean.themeDefault&&!['dark','light','slate','ink','forest'].includes(String(clean.themeDefault))){
+      return NextResponse.json({error:'Invalid theme.'},{status:400});
     }
     for(const key of ['siteUrl','linkedin','socialImage']){
       if(typeof clean[key]==='string'&&clean[key]){
