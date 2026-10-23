@@ -26,11 +26,12 @@ export async function PUT(req:Request){
       return NextResponse.json({error:'Invalid settings.'},{status:400});
     }
     const allowed=[
-      'brandName','tagline','introEnabled','introEveryVisit',
+      'brandName','tagline','introEnabled','introEveryVisit','introMode',
       'projectCardHeight','projectThumbHeight','projectThumbHeightMobile',
       'themeDefault','themeOptions','accent','email','whatsappNumber',
       'whatsappMessage','linkedin','siteUrl','footerText','seoTitle',
-      'seoDescription','socialImage','navigationJson','footerLinksJson'
+      'seoDescription','socialImage','navigationJson','footerLinksJson',
+      'showMarquee','showHeroArt','showAmbient','showScrollProgress'
     ];
     const clean=Object.fromEntries(
       Object.entries(body).filter(([k,v])=>allowed.includes(k)&&['string','boolean'].includes(typeof v))
@@ -45,6 +46,9 @@ export async function PUT(req:Request){
     }
     if(clean.themeDefault&&!['dark','light','slate','ink','forest'].includes(String(clean.themeDefault))){
       return NextResponse.json({error:'Invalid theme.'},{status:400});
+    }
+    if(clean.introMode&&!['off','first','always'].includes(String(clean.introMode))){
+      return NextResponse.json({error:'Invalid intro mode.'},{status:400});
     }
     for(const key of ['siteUrl','linkedin','socialImage']){
       if(typeof clean[key]==='string'&&clean[key]){
