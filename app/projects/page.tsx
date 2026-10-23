@@ -48,9 +48,7 @@ export default async function Projects() {
             {projects.map((x: any, i: number) => (
               <RevealItem key={x.id} index={i} className="service-card-wrap">
                 <article className="service-card project-card" style={projectCardStyle(x)}>
-                  <span className="card-index">
-                    PROJECT / {String(i + 1).padStart(2, '0')}
-                  </span>
+                  
                   {typeof x.thumbnail === 'string' && x.thumbnail.startsWith('https://') ? (
                     <img
                       className="project-thumbnail"
