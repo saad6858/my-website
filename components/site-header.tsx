@@ -1,1 +1,104 @@
-'use client';import Link from 'next/link';import {usePathname} from 'next/navigation';import {Menu, X, ArrowUpRight} from 'lucide-react';import {useState} from 'react';import {Monogram} from './monogram';type NavLink={label:string;href:string};const fallback:NavLink[]=[{label:'Services',href:'/services'},{label:'Projects',href:'/projects'},{label:'Industries',href:'/industries'},{label:'Insights',href:'/insights'},{label:'FAQ',href:'/faq'},{label:'About',href:'/about'}];function parseNavigation(raw?:string):NavLink[]{try{const x=JSON.parse(raw||'');if(Array.isArray(x)){const valid=x.filter((i:any)=>i&&typeof i.label==='string'&&typeof i.href==='string'&&i.href.startsWith('/')&&!i.href.startsWith('//')).slice(0,10).map((i:any)=>({label:i.label.slice(0,40),href:i.href.slice(0,120)}));if(valid.length)return valid}}catch{}return fallback}export function SiteHeader({brand='SM Automations',navigationJson=''}:{brand?:string;navigationJson?:string}){const path=usePathname();const [open,setOpen]=useState(false);const links=parseNavigation(navigationJson);return <header className="site-header"><Link className="brand" href="/" aria-label={`${brand} home`}><Monogram className="brand-symbol"/><span>{brand}<small>INTELLIGENT SYSTEMS / AUTOMATION</small></span></Link><nav className={open?'nav open':'nav'} aria-label="Main navigation">{links.map(({label,href})=><Link key={`${label}-${href}`} className={path===href?'active':''} href={href} onClick={()=>setOpen(false)}>{label}</Link>)}<Link className="nav-contact" href="/contact" onClick={()=>setOpen(false)}>Start a conversation <ArrowUpRight size={14}/></Link></nav><div className="header-actions"><button className="icon-button menu-toggle" onClick={()=>setOpen(!open)} aria-label={open?'Close menu':'Open menu'} aria-expanded={open}>{open?<X size={20}/>:<Menu size={20}/>}</button></div></header>}
+'use client';
+import Link from 'next/link';
+import {usePathname} from 'next/navigation';
+import {Menu, X, ArrowUpRight} from 'lucide-react';
+import {useEffect, useState} from 'react';
+import {Monogram} from './monogram';
+
+type NavLink = {label: string; href: string};
+const fallback: NavLink[] = [
+  {label: 'Services', href: '/services'},
+  {label: 'Projects', href: '/projects'},
+  {label: 'Industries', href: '/industries'},
+  {label: 'Insights', href: '/insights'},
+  {label: 'FAQ', href: '/faq'},
+  {label: 'About', href: '/about'}
+];
+
+function parseNavigation(raw?: string): NavLink[] {
+  try {
+    const x = JSON.parse(raw || '');
+    if (Array.isArray(x)) {
+      const valid = x
+        .filter((i: any) => i && typeof i.label === 'string' && typeof i.href === 'string' && i.href.startsWith('/') && !i.href.startsWith('//'))
+        .slice(0, 10)
+        .map((i: any) => ({label: i.label.slice(0, 40), href: i.href.slice(0, 120)}));
+      if (valid.length) return valid;
+    }
+  } catch {}
+  return fallback;
+}
+
+export function SiteHeader({
+  brand = 'SM Automations',
+  navigationJson = '',
+  layout = 'classic'
+}: {
+  brand?: string;
+  navigationJson?: string;
+  layout?: string;
+}) {
+  const path = usePathname();
+  const [open, setOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState(layout || 'classic');
+  const links = parseNavigation(navigationJson);
+
+  useEffect(() => {
+    try {
+      const d = document.documentElement.getAttribute('data-layout') || layout || 'classic';
+      setLayoutMode(d);
+    } catch {}
+  }, [layout]);
+
+  const isRail = layoutMode === 'rail';
+  const isBento = layoutMode === 'bento';
+
+  return (
+    <header className={'site-header' + (isRail ? ' is-rail' : '') + (isBento ? ' is-bento' : '')}>
+      <Link className="brand" href="/" aria-label={`${brand} home`}>
+        <Monogram className="brand-symbol" />
+        <span>
+          {brand}
+          <small>INTELLIGENT SYSTEMS / AUTOMATION</small>
+        </span>
+      </Link>
+
+      {isRail ? (
+        <nav className={open ? 'nav open rail-nav' : 'nav rail-nav'} aria-label="Main navigation">
+          <p className="rail-nav-label">Navigate</p>
+          {links.map(({label, href}, i) => (
+            <Link key={`${label}-${href}`} className={path === href ? 'active' : ''} href={href} onClick={() => setOpen(false)}>
+              <span className="rail-num">{String(i + 1).padStart(2, '0')}</span>
+              {label}
+            </Link>
+          ))}
+          <Link className="nav-contact" href="/contact" onClick={() => setOpen(false)}>
+            Start a conversation <ArrowUpRight size={14} />
+          </Link>
+        </nav>
+      ) : (
+        <nav className={open ? 'nav open' : 'nav'} aria-label="Main navigation">
+          {links.map(({label, href}) => (
+            <Link key={`${label}-${href}`} className={path === href ? 'active' : ''} href={href} onClick={() => setOpen(false)}>
+              {label}
+            </Link>
+          ))}
+          <Link className="nav-contact" href="/contact" onClick={() => setOpen(false)}>
+            Start a conversation <ArrowUpRight size={14} />
+          </Link>
+        </nav>
+      )}
+
+      <div className="header-actions">
+        <button
+          className="icon-button menu-toggle"
+          onClick={() => setOpen(!open)}
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+    </header>
+  );
+}

@@ -44,7 +44,7 @@ export async function PUT(req:Request){
     if(typeof clean.accent==='string'&&!/^#[0-9a-fA-F]{6}$/.test(clean.accent)){
       return NextResponse.json({error:'Accent must be a six-digit hex colour.'},{status:400});
     }
-    if(clean.themeDefault&&!['dark','light','slate','ink','forest','void','mono','noir'].includes(String(clean.themeDefault))){
+    if(clean.themeDefault&&!['dark','light','glass','tokyo','evolute','cinematic','editorial','slate','ink','forest'].includes(String(clean.themeDefault))){
       return NextResponse.json({error:'Invalid theme.'},{status:400});
     }
     if(clean.introMode&&!['off','first','always'].includes(String(clean.introMode))){
