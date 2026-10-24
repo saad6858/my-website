@@ -1,0 +1,76 @@
+name: Apply All Site Fixes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require master zip
+        run: |
+          if [ -f MASTER-ALL-FIXES.zip ]; then
+            ZIP=MASTER-ALL-FIXES.zip
+          elif [ -f ALL-FIXES-BUNDLE.zip ]; then
+            unzip -o ALL-FIXES-BUNDLE.zip -d /tmp/bundle
+            ZIP=/tmp/bundle/MASTER-ALL-FIXES.zip
+          else
+            echo "Missing MASTER-ALL-FIXES.zip or ALL-FIXES-BUNDLE.zip"
+            exit 1
+          fi
+          echo "ZIP=$ZIP" >> $GITHUB_ENV
+
+      - name: Apply code
+        run: |
+          set -e
+          mkdir -p /tmp/fx
+          unzip -o "$ZIP" -d /tmp/fx
+          mkdir -p app/admin app/api/admin/settings components lib
+          cp -f /tmp/fx/app/globals.css app/globals.css
+          cp -f /tmp/fx/app/layout.tsx app/layout.tsx
+          cp -f /tmp/fx/app/page.tsx app/page.tsx
+          cp -f /tmp/fx/app/admin/page.tsx app/admin/page.tsx
+          cp -f /tmp/fx/app/api/admin/settings/route.ts app/api/admin/settings/route.ts
+          cp -f /tmp/fx/components/intro-gate.tsx components/intro-gate.tsx
+          cp -f /tmp/fx/lib/public-data.ts lib/public-data.ts
+          # Verify critical markers
+          grep -q 'INTRO_PRESETS' components/intro-gate.tsx
+          grep -q 'data-theme="glass"' app/globals.css
+          grep -q 'data-theme="tokyo"' app/globals.css
+          grep -q 'data-theme="evolute"' app/globals.css
+          grep -q 'data-theme="cinematic"' app/globals.css
+          grep -q 'data-theme="editorial"' app/globals.css
+          grep -q 'intro-stop' components/intro-gate.tsx
+          grep -q 'IntroGate' app/layout.tsx
+          grep -q 'Hard-refresh the public site' app/admin/page.tsx
+          echo "Verification OK"
+
+      - name: Clean zip artifacts and old workflows
+        run: |
+          set -e
+          rm -f MASTER-ALL-FIXES.zip ALL-FIXES-BUNDLE.zip
+          rm -f fix-intro-themes.zip fix3-cta-faq.zip fix4-admin-forms.zip fix5-performance.zip fix6-polish.zip
+          rm -f fix-themes-layouts-intro.zip fix-layouts-true.zip fix-design-v2.zip
+          rm -f fix1-cta-theme-admin.zip fix2-themes.zip fix2b-theme-public-data.zip
+          rm -f batch1-fixes.zip batch2-fixes.zip batch3-fixes.zip batch4-fixes.zip batch5-fixes.zip
+          # Remove apply workflows including this one (last step after commit uses path)
+          find .github/workflows -type f \( -name 'apply-*.yml' -o -name 'Apply*.yml' -o -name '*fix*.yml' -o -name '*batch*.yml' \) -print -delete || true
+          # Also remove root-level workflow copies if any
+          rm -f apply-*.yml Apply*.yml || true
+
+      - name: Commit and push
+        run: |
+          git config user.name "site-fix-bot"
+          git config user.email "bot@local"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Apply all site fixes: distinct themes, reliable intro timers, CTA/FAQ, admin save refresh, performance, polish. Clean workflows."
+            git push
+          fi
