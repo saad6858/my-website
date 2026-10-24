@@ -31,7 +31,7 @@ export async function PUT(req:Request){
       'themeDefault','themeOptions','accent','email','whatsappNumber',
       'whatsappMessage','linkedin','siteUrl','footerText','seoTitle',
       'seoDescription','socialImage','navigationJson','footerLinksJson',
-      'showMarquee','showHeroArt','showAmbient','showScrollProgress'
+      'showMarquee','showHeroArt','showAmbient','showScrollProgress','siteLayout','introPreset','introCustomEnabled','introScenesJson'
     ];
     const clean=Object.fromEntries(
       Object.entries(body).filter(([k,v])=>allowed.includes(k)&&['string','boolean'].includes(typeof v))
@@ -44,11 +44,21 @@ export async function PUT(req:Request){
     if(typeof clean.accent==='string'&&!/^#[0-9a-fA-F]{6}$/.test(clean.accent)){
       return NextResponse.json({error:'Accent must be a six-digit hex colour.'},{status:400});
     }
-    if(clean.themeDefault&&!['dark','light','slate','ink','forest'].includes(String(clean.themeDefault))){
+    if(clean.themeDefault&&!['dark','light','slate','ink','forest','void','mono','noir'].includes(String(clean.themeDefault))){
       return NextResponse.json({error:'Invalid theme.'},{status:400});
     }
     if(clean.introMode&&!['off','first','always'].includes(String(clean.introMode))){
       return NextResponse.json({error:'Invalid intro mode.'},{status:400});
+    }
+    if(clean.siteLayout&&!['classic','rail','bento'].includes(String(clean.siteLayout))){
+      return NextResponse.json({error:'Invalid layout.'},{status:400});
+    }
+    const introPresets=['pulse','breath','who','story','value','full','deep','cinema','epic','maximus'];
+    if(clean.introPreset&&!introPresets.includes(String(clean.introPreset))){
+      return NextResponse.json({error:'Invalid intro preset.'},{status:400});
+    }
+    if(typeof clean.introScenesJson==='string'&&clean.introScenesJson.length>20000){
+      return NextResponse.json({error:'Custom intro is too large.'},{status:400});
     }
     for(const key of ['siteUrl','linkedin','socialImage']){
       if(typeof clean[key]==='string'&&clean[key]){

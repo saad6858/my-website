@@ -35,8 +35,10 @@ export async function getSiteSettings():Promise<Record<string,any>>{
   if(!settings.siteUrl||settings.siteUrl==='https://saadmaqbool.vercel.app')settings.siteUrl='https://smautomations.tech';
   if(!settings.seoTitle||settings.seoTitle==='Saad Maqbool — AI & Automation')settings.seoTitle='SM Automations — Intelligent Systems';
   if(!settings.accent||settings.accent==='#c3a67a')settings.accent='#e24d56';
-  if(!['dark','light','slate','ink','forest'].includes(String(settings.themeDefault||'')))settings.themeDefault='dark';
-  settings.themeOptions=['dark','slate','ink','forest','light'];
+  if(!['dark','light','slate','ink','forest','void','mono','noir'].includes(String(settings.themeDefault||'')))settings.themeDefault='dark';
+  settings.themeOptions=['dark','slate','ink','forest','void','mono','noir','light'];
+  if(!['classic','rail','bento'].includes(String(settings.siteLayout||'')))settings.siteLayout='classic';
+  if(!settings.introPreset)settings.introPreset='breath';
   return settings;
 }
 
