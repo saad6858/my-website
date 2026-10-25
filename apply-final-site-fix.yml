@@ -1,0 +1,48 @@
+name: Apply FINAL site fix
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack FINAL-SITE-FIX.zip
+        run: |
+          set -euo pipefail
+          test -f FINAL-SITE-FIX.zip
+          unzip -o FINAL-SITE-FIX.zip -d /tmp/finalpack
+          mkdir -p components app/admin app/api/admin/settings
+          cp -f /tmp/finalpack/components/intro-gate.tsx components/intro-gate.tsx
+          cp -f /tmp/finalpack/app/globals.css app/globals.css
+          cp -f /tmp/finalpack/app/admin/page.tsx app/admin/page.tsx
+          if [ -f /tmp/finalpack/app/api/admin/settings/route.ts ]; then
+            cp -f /tmp/finalpack/app/api/admin/settings/route.ts app/api/admin/settings/route.ts
+          fi
+      - name: Verify critical fixes
+        run: |
+          set -euo pipefail
+          grep -q 'intro-gate-square' components/intro-gate.tsx
+          grep -q 'isAdminRoute' components/intro-gate.tsx
+          ! grep -q 'animation:intro-out' app/globals.css || ! grep -E 'intro-gate\{[^}]*intro-out' app/globals.css
+          grep -q 'ADMIN LOGIN REDESIGN' app/globals.css
+          grep -q 'admin-login-card' app/admin/page.tsx
+          ! grep -q 'PRIVATE AREA' app/admin/page.tsx
+          ! grep -q 'trusted admin' app/admin/page.tsx
+          grep -q 'Sign-in failed. Check your email' app/admin/page.tsx
+          echo "VERIFY_OK"
+      - name: Commit changes
+        run: |
+          git config user.name "sm-fix-bot"
+          git config user.email "bot@smautomations.tech"
+          git add components/intro-gate.tsx app/globals.css app/admin/page.tsx app/api/admin/settings/route.ts || true
+          git commit -m "FINAL: square intro with solid timers, admin login redesign, generic auth errors" || echo "nothing to commit"
+          git push || true
+      - name: Cleanup zip + this workflow
+        run: |
+          git rm -f FINAL-SITE-FIX.zip .github/workflows/apply-final-site-fix.yml 2>/dev/null || true
+          # remove other leftover apply workflows if present
+          git rm -f .github/workflows/apply-*.yml 2>/dev/null || true
+          git commit -m "chore: remove apply workflows after FINAL fix" || true
+          git push || true
