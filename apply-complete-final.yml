@@ -1,0 +1,50 @@
+name: Apply complete final (intro + admin + logo)
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack COMPLETE-FINAL.zip
+        run: |
+          set -euo pipefail
+          test -f COMPLETE-FINAL.zip
+          unzip -o COMPLETE-FINAL.zip -d /tmp/pack
+          mkdir -p components app/admin app public
+          cp -f /tmp/pack/components/intro-gate.tsx components/intro-gate.tsx
+          cp -f /tmp/pack/components/brand-logo.tsx components/brand-logo.tsx
+          cp -f /tmp/pack/components/monogram.tsx components/monogram.tsx
+          cp -f /tmp/pack/app/globals.css app/globals.css
+          cp -f /tmp/pack/app/admin/page.tsx app/admin/page.tsx
+          if [ -f /tmp/pack/app/layout.tsx ]; then cp -f /tmp/pack/app/layout.tsx app/layout.tsx; fi
+          cp -f /tmp/pack/public/brand-logo.svg public/brand-logo.svg
+          cp -f /tmp/pack/public/icon.svg public/icon.svg
+          cp -f /tmp/pack/public/og-logo.svg public/og-logo.svg
+          cp -f /tmp/pack/public/smautomations-logo-source.svg public/smautomations-logo-source.svg
+      - name: Verify
+        run: |
+          set -euo pipefail
+          grep -q 'performance.now' components/intro-gate.tsx
+          ! grep -q 'Signed in as' app/admin/page.tsx
+          grep -q 'brand-logo.svg' components/brand-logo.tsx
+          grep -q '#ff555f' public/brand-logo.svg
+          grep -q 'LOGO FULL-COLOR' app/globals.css
+          echo VERIFY_OK
+      - name: Commit
+        run: |
+          git config user.name "sm-fix-bot"
+          git config user.email "bot@smautomations.tech"
+          git add components/intro-gate.tsx components/brand-logo.tsx components/monogram.tsx \
+            app/globals.css app/admin/page.tsx app/layout.tsx \
+            public/brand-logo.svg public/icon.svg public/og-logo.svg public/smautomations-logo-source.svg
+          git commit -m "Complete final: intro wall-clock timing, hide admin email, full-color SVG logo larger sizes" || true
+          git push || true
+      - name: Cleanup
+        run: |
+          git rm -f COMPLETE-FINAL.zip .github/workflows/apply-complete-final.yml 2>/dev/null || true
+          git rm -f .github/workflows/apply-*.yml 2>/dev/null || true
+          git commit -m "chore: remove apply workflows after complete final" || true
+          git push || true
