@@ -2077,3 +2077,62 @@ body:has(.admin-shell) .intro-gate {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+
+/* ===== LOGO FULL-COLOR + SIZE (exact SVG fills: cream + red) ===== */
+.brand-logo,
+.brand-symbol {
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  object-fit: contain !important;
+  vertical-align: middle !important;
+}
+
+/* Header — larger */
+.site-header .brand-logo,
+.site-header .brand-symbol,
+header .brand-logo,
+header .brand-symbol {
+  width: 52px !important;
+  height: 52px !important;
+  max-width: 52px !important;
+  max-height: 52px !important;
+}
+
+/* Footer */
+.footer-brand .brand-logo,
+.footer-brand .brand-symbol {
+  width: 72px !important;
+  height: 72px !important;
+  max-width: 72px !important;
+  max-height: 72px !important;
+}
+
+/* Intro */
+.intro-monogram,
+.brand-logo.intro-monogram,
+.intro-monogram.brand-symbol {
+  width: 180px !important;
+  height: 180px !important;
+  max-width: min(180px, 70vw) !important;
+  max-height: 180px !important;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 560px) {
+  .site-header .brand-logo,
+  .site-header .brand-symbol,
+  header .brand-logo {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .intro-monogram,
+  .brand-logo.intro-monogram {
+    width: 140px !important;
+    height: 140px !important;
+  }
+}

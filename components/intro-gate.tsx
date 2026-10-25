@@ -11,7 +11,6 @@ export type IntroScene = {
   durationMs?: number;
 };
 
-/** 10 presets — durations are wall-clock; UI is classic square / centered (no orbital rings). */
 export const INTRO_PRESETS: Record<string, {label: string; totalMs: number; scenes: IntroScene[]}> = {
   pulse: {
     label: '1 · Pulse (2.2s)',
@@ -129,7 +128,8 @@ function parseCustomScenes(json?: string): IntroScene[] | null {
       if (!item || typeof item !== 'object') continue;
       const title = String((item as any).title || '').trim();
       if (!title) continue;
-      const durationMs = Math.max(1200, Number((item as any).durationMs) || 3000);
+      const n = Number((item as any).durationMs);
+      const durationMs = Number.isFinite(n) && n > 0 ? n : 4000;
       scenes.push({
         eyebrow: (item as any).eyebrow != null ? String((item as any).eyebrow) : undefined,
         title,
@@ -144,8 +144,10 @@ function parseCustomScenes(json?: string): IntroScene[] | null {
 }
 
 /**
- * Classic square / centered intro (no circular orbit rings).
- * Visibility is controlled only by JS timers — CSS must not auto-hide.
+ * Intro timing — absolute wall-clock deadlines.
+ * All scene end times are computed once at start from performance.now().
+ * A single requestAnimationFrame loop advances the scene index and calls finish.
+ * No setTimeout chains. No Math.max(1200) floor.
  */
 export function IntroGate({
   enabled = true,
@@ -165,8 +167,9 @@ export function IntroGate({
   const pathname = usePathname() || '';
   const isAdminRoute = pathname.startsWith('/admin');
 
-  const resolved: 'off' | 'first' | 'always' =
-    isAdminRoute ? 'off' : (mode || (!enabled ? 'off' : everyVisit ? 'always' : 'first'));
+  const resolved: 'off' | 'first' | 'always' = isAdminRoute
+    ? 'off'
+    : mode || (!enabled ? 'off' : everyVisit ? 'always' : 'first');
 
   const scenes = useMemo(() => {
     if (customEnabled) {
@@ -177,37 +180,49 @@ export function IntroGate({
     const p = INTRO_PRESETS[key] || INTRO_PRESETS.breath;
     return p.scenes.map(s => ({
       ...s,
-      durationMs: Math.max(1200, Number(s.durationMs) || 3000)
+      durationMs: Number.isFinite(Number(s.durationMs)) && Number(s.durationMs) > 0 ? Number(s.durationMs) : 4000
     }));
   }, [preset, customScenesJson, customEnabled]);
+
+  const scenesKey = useMemo(
+    () => scenes.map(s => `${s.title}|${s.durationMs}`).join('||'),
+    [scenes]
+  );
 
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [barKey, setBarKey] = useState(0);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [sceneDuration, setSceneDuration] = useState(4000);
+
   const pausedRef = useRef(false);
-  const runId = useRef(0);
+  const indexRef = useRef(0);
+  const rafRef = useRef(0);
+  const pauseStartedRef = useRef(0);
+  const pausedTotalRef = useRef(0);
 
   useEffect(() => {
     pausedRef.current = paused;
+    if (paused) {
+      pauseStartedRef.current = performance.now();
+    } else if (pauseStartedRef.current) {
+      pausedTotalRef.current += performance.now() - pauseStartedRef.current;
+      pauseStartedRef.current = 0;
+    }
   }, [paused]);
 
-  function clearTimers() {
-    timers.current.forEach(id => clearTimeout(id));
-    timers.current = [];
-  }
-
   function finish() {
-    clearTimers();
-    runId.current += 1;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
     try {
       if (resolved === 'first') sessionStorage.setItem('sm-intro-seen', '1');
     } catch {}
     setVisible(false);
   }
 
-  // Show / hide based on mode + preset change
+  // Show / hide
   useEffect(() => {
     if (resolved === 'off') {
       setVisible(false);
@@ -221,74 +236,83 @@ export function IntroGate({
     } catch {}
     setVisible(true);
     setIndex(0);
+    indexRef.current = 0;
     setPaused(false);
+    pausedTotalRef.current = 0;
+    pauseStartedRef.current = 0;
     setBarKey(k => k + 1);
   }, [resolved, preset, customEnabled, customScenesJson]);
 
-  // Wall-clock scene sequence — independent of CSS animations
+  // Absolute-time driver
   useEffect(() => {
-    if (!visible || resolved === 'off') return;
-    clearTimers();
-    const myRun = ++runId.current;
+    if (!visible || resolved === 'off' || !scenes.length) return;
 
-    const reduce =
-      typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      const t = setTimeout(() => {
-        if (runId.current === myRun) finish();
-      }, 800);
-      timers.current.push(t);
-      return () => clearTimers();
+    if (typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const id = window.setTimeout(() => finish(), 900);
+      return () => window.clearTimeout(id);
     }
 
+    const start = performance.now();
+    pausedTotalRef.current = 0;
+    pauseStartedRef.current = 0;
+
+    // Cumulative end timestamps relative to start (ms)
+    const ends: number[] = [];
+    let acc = 0;
+    for (const s of scenes) {
+      const d = Number(s.durationMs) > 0 ? Number(s.durationMs) : 4000;
+      acc += d;
+      ends.push(acc);
+    }
+    const total = acc;
+
+    indexRef.current = 0;
     setIndex(0);
+    setSceneDuration(Number(scenes[0]?.durationMs) > 0 ? Number(scenes[0].durationMs) : 4000);
     setBarKey(k => k + 1);
 
-    let i = 0;
+    const tick = (now: number) => {
+      // Effective elapsed excludes time spent paused
+      let pausedExtra = pausedTotalRef.current;
+      if (pausedRef.current && pauseStartedRef.current) {
+        pausedExtra += now - pauseStartedRef.current;
+      }
+      const elapsed = now - start - pausedExtra;
 
-    const scheduleNext = () => {
-      if (runId.current !== myRun) return;
-      if (i >= scenes.length) {
+      if (elapsed >= total) {
         finish();
         return;
       }
-      const dur = Math.max(1200, scenes[i].durationMs || 3000);
-      let remaining = dur;
 
-      const step = () => {
-        if (runId.current !== myRun) return;
-        if (pausedRef.current) {
-          const t = setTimeout(step, 200);
-          timers.current.push(t);
-          return;
-        }
-        const t = setTimeout(() => {
-          if (runId.current !== myRun) return;
-          i += 1;
-          if (i >= scenes.length) {
-            finish();
-            return;
-          }
-          setIndex(i);
-          setBarKey(k => k + 1);
-          scheduleNext();
-        }, remaining);
-        timers.current.push(t);
-      };
-      step();
+      // Scene index from absolute deadlines
+      let next = 0;
+      while (next < ends.length && elapsed >= ends[next]) next += 1;
+      if (next >= scenes.length) {
+        finish();
+        return;
+      }
+      if (next !== indexRef.current) {
+        indexRef.current = next;
+        setIndex(next);
+        const d = Number(scenes[next]?.durationMs) > 0 ? Number(scenes[next].durationMs) : 4000;
+        setSceneDuration(d);
+        setBarKey(k => k + 1);
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
     };
 
-    scheduleNext();
+    rafRef.current = requestAnimationFrame(tick);
     return () => {
-      clearTimers();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, scenes, resolved]);
+  }, [visible, scenesKey, resolved]);
 
   if (resolved === 'off' || !visible) return null;
   const scene = scenes[index] || scenes[0];
   if (!scene) return null;
-  const dur = Math.max(1200, scene.durationMs || 3000);
   const titleLines = String(scene.title).split('\n');
 
   return (
@@ -303,7 +327,7 @@ export function IntroGate({
         <div
           key={barKey}
           className={'intro-progress-bar' + (paused ? ' is-paused' : '')}
-          style={{animationDuration: `${dur}ms`}}
+          style={{animationDuration: `${sceneDuration}ms`}}
         />
       </div>
       <div className="intro-inner" key={`${index}-${barKey}`}>
