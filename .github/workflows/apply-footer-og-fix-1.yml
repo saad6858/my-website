@@ -1,0 +1,44 @@
+name: Apply footer layout + OG 1200x630 image
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack
+        run: |
+          set -euo pipefail
+          test -f FOOTER-OG-FIX.zip
+          unzip -o FOOTER-OG-FIX.zip -d /tmp/pack
+          mkdir -p app public
+          cp -f /tmp/pack/app/globals.css app/globals.css
+          cp -f /tmp/pack/public/og-logo.png public/og-logo.png
+          ls -la public/og-logo.png app/globals.css
+      - name: Verify
+        run: |
+          set -euo pipefail
+          grep -q 'FOOTER LAYOUT FIX' app/globals.css
+          test -f public/og-logo.png
+          # PNG signature without pipefail/SIGPIPE issues
+          python3 -c "
+          b=open('public/og-logo.png','rb').read(8)
+          assert b[:4]==b'\x89PNG', b
+          print('PNG_OK', len(open('public/og-logo.png','rb').read()), 'bytes')
+          "
+          echo VERIFY_OK
+      - name: Commit
+        run: |
+          git config user.name "sm-fix-bot"
+          git config user.email "bot@smautomations.tech"
+          git add app/globals.css public/og-logo.png
+          git status
+          git commit -m "fix: footer 3-col layout + OG social image 1200x630 PNG" || true
+          git push || true
+      - name: Cleanup
+        run: |
+          git rm -f FOOTER-OG-FIX.zip .github/workflows/apply-footer-og-fix.yml 2>/dev/null || true
+          git commit -m "chore: remove footer-og apply workflow" || true
+          git push || true
