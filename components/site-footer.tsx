@@ -38,7 +38,6 @@ function parseLinks(raw?: string): FooterLink[] {
 export function SiteFooter({
   brandName = 'SM Automations',
   email = '',
-  linkedin = 'https://www.linkedin.com/in/saad-maqbool',
   footerText = 'Automation with intention. Built around your real workflow.',
   whatsappNumber = '',
   whatsappMessage = 'Hi Saad, I would like to discuss an AI automation idea.',
@@ -46,7 +45,6 @@ export function SiteFooter({
 }: {
   brandName?: string;
   email?: string;
-  linkedin?: string;
   footerText?: string;
   whatsappNumber?: string;
   whatsappMessage?: string;
@@ -83,9 +81,6 @@ export function SiteFooter({
         <div className="footer-contact-col">
           <p className="footer-col-label">Connect</p>
           <div className="footer-links">
-            <a href={linkedin} target="_blank" rel="noreferrer">
-              LinkedIn ↗
-            </a>
             {email && <a href={`mailto:${email}`}>{email}</a>}
             {whatsappNumber && (
               <a

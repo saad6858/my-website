@@ -1,1 +1,43 @@
-import {ContactForm} from '@/components/contact-form';import {getPublishedPage,getSiteSettings} from '@/lib/public-data';import {SectionRenderer} from '@/components/section-renderer';import {Reveal} from '@/components/motion-system';import type {Metadata} from 'next';export const metadata:Metadata={title:'Contact',description:'Start a conversation about AI automation.'};export default async function Contact(){const [settings,page]=await Promise.all([getSiteSettings(),getPublishedPage('contact')]);return <main id="main"><SectionRenderer sections={page?.sections||[]}/><Reveal className="section-wrap contact-layout"><aside className="contact-aside"><p className="eyebrow">A GOOD PLACE TO START</p><p>What takes too much time? Where do requests get stuck? What information is hard to find?</p><p><a href={settings.linkedin||'https://www.linkedin.com/in/saad-maqbool'} target="_blank" rel="noreferrer">LinkedIn ↗</a></p>{settings.email&&<p><a href={`mailto:${settings.email}`}>{settings.email}</a></p>}{settings.whatsappNumber&&<p><a href={`https://wa.me/${String(settings.whatsappNumber).replace(/[^0-9]/g,'')}?text=${encodeURIComponent(settings.whatsappMessage||'Hi Saad, I would like to discuss an AI automation idea.')}`} target="_blank" rel="noreferrer">Message on WhatsApp ↗</a></p>}<p className="form-note">Please do not submit patient information, health data, passwords, credentials or other sensitive information.</p></aside><ContactForm/></Reveal></main>}
+import {ContactForm} from '@/components/contact-form';
+import {getPublishedPage,getSiteSettings} from '@/lib/public-data';
+import {SectionRenderer} from '@/components/section-renderer';
+import {Reveal} from '@/components/motion-system';
+import type {Metadata} from 'next';
+
+export const metadata:Metadata={
+  title:'Contact',
+  description:'Start a conversation about AI automation.'
+};
+
+export default async function Contact(){
+  const [settings,page]=await Promise.all([getSiteSettings(),getPublishedPage('contact')]);
+  return (
+    <main id="main">
+      <SectionRenderer sections={page?.sections||[]}/>
+      <Reveal className="section-wrap contact-layout">
+        <aside className="contact-aside">
+          <p className="eyebrow">A GOOD PLACE TO START</p>
+          <p>What takes too much time? Where do requests get stuck? What information is hard to find?</p>
+          {settings.email && (
+            <p><a href={`mailto:${settings.email}`}>{settings.email}</a></p>
+          )}
+          {settings.whatsappNumber && (
+            <p>
+              <a
+                href={`https://wa.me/${String(settings.whatsappNumber).replace(/[^0-9]/g,'')}?text=${encodeURIComponent(settings.whatsappMessage||'Hi Saad, I would like to discuss an AI automation idea.')}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Message on WhatsApp ↗
+              </a>
+            </p>
+          )}
+          <p className="form-note">
+            Please do not submit patient information, health data, passwords, credentials or other sensitive information.
+          </p>
+        </aside>
+        <ContactForm/>
+      </Reveal>
+    </main>
+  );
+}

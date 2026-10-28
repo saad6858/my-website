@@ -7,24 +7,32 @@ export async function getPublishedPage(slug:string):Promise<SitePage|undefined>{
   let hasConfiguredSettings=false;
   try{
     const db=adminDb();
-    const snap=await db.collection('pages').where('slug','==',slug).limit(10).get();
-    const published=snap.docs.find(d=>d.get('status')==='published');
-    if(published)return {id:published.id,...published.data()} as SitePage;
-    // A stored draft/archived page owns this slug, so don't leak a seeded public fallback.
-    if(!snap.empty)return undefined;
-    if(slug){
-      const {createHash}=await import('node:crypto');
-      const key=createHash('sha256').update(slug).digest('hex');
-      const r=await db.collection('slugRedirects').doc(key).get();
-      if(r.exists&&r.get('status')==='active'&&typeof r.get('to')==='string')redirectTo='/'+String(r.get('to')).replace(/^\//,'');
+    // Homepage at / uses empty slug "". Also accept legacy slug "home".
+    const candidates = (slug === '' || slug === 'home') ? ['', 'home'] : [slug];
+    let ownedUnpublished = false;
+    for (const s of candidates) {
+      const snap = await db.collection('pages').where('slug','==',s).limit(10).get();
+      const published = snap.docs.find(d => d.get('status') === 'published');
+      if (published) return {id: published.id, ...published.data()} as SitePage;
+      if (!snap.empty) ownedUnpublished = true;
     }
-    const settings=await db.doc('siteSettings/global').get();
-    hasConfiguredSettings=settings.exists;
+    // Draft/archived owns this slug — do not fall back to seed content.
+    if (ownedUnpublished) return undefined;
+    if (slug && slug !== 'home') {
+      const {createHash} = await import('node:crypto');
+      const key = createHash('sha256').update(slug).digest('hex');
+      const r = await db.collection('slugRedirects').doc(key).get();
+      if (r.exists && r.get('status') === 'active' && typeof r.get('to') === 'string') {
+        redirectTo = '/' + String(r.get('to')).replace(/^\//, '');
+      }
+    }
+    const settings = await db.doc('siteSettings/global').get();
+    hasConfiguredSettings = settings.exists;
   }catch{}
-  // Next redirect throws a framework control-flow signal; keep it outside catch blocks.
-  if(redirectTo)redirect(redirectTo);
-  if(hasConfiguredSettings)return undefined;
-  return initialPages.find(p=>p.slug===slug&&p.status==='published');
+  if (redirectTo) redirect(redirectTo);
+  if (hasConfiguredSettings) return undefined;
+  const seedSlug = (slug === 'home') ? '' : slug;
+  return initialPages.find(p => p.slug === seedSlug && p.status === 'published');
 }
 
 export async function getSiteSettings():Promise<Record<string,any>>{
@@ -39,6 +47,8 @@ export async function getSiteSettings():Promise<Record<string,any>>{
   settings.themeOptions=['dark','glass','tokyo','evolute','cinematic','editorial','slate','ink','forest','light'];
   if(!['classic','rail','bento'].includes(String(settings.siteLayout||'')))settings.siteLayout='classic';
   if(!settings.introPreset)settings.introPreset='breath';
+  // Never surface LinkedIn on the public site
+  settings.linkedin='';
   return settings;
 }
 

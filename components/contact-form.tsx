@@ -25,7 +25,7 @@ export function ContactForm() {
       setStatus(
         err instanceof Error
           ? err.message
-          : 'Unable to send right now. Please use LinkedIn instead.'
+          : 'Unable to send right now. Please try again in a moment, or email us directly.'
       );
     } finally {
       setBusy(false);
