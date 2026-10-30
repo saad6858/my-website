@@ -41,7 +41,9 @@ export function SiteFooter({
   footerText = 'Automation with intention. Built around your real workflow.',
   whatsappNumber = '',
   whatsappMessage = 'Hi Saad, I would like to discuss an AI automation idea.',
-  footerLinksJson = ''
+  footerLinksJson = '',
+  showEmail = true,
+  showWhatsApp = true
 }: {
   brandName?: string;
   email?: string;
@@ -49,9 +51,14 @@ export function SiteFooter({
   whatsappNumber?: string;
   whatsappMessage?: string;
   footerLinksJson?: string;
+  showEmail?: boolean;
+  showWhatsApp?: boolean;
 }) {
   const links = parseLinks(footerLinksJson);
   const year = new Date().getFullYear();
+  const emailVisible = showEmail !== false && typeof email === 'string' && email.includes('@');
+  const waDigits = typeof whatsappNumber === 'string' ? whatsappNumber.replace(/[^0-9]/g, '') : '';
+  const waVisible = showWhatsApp !== false && waDigits.length >= 8;
 
   return (
     <footer className="site-footer">
@@ -81,10 +88,10 @@ export function SiteFooter({
         <div className="footer-contact-col">
           <p className="footer-col-label">Connect</p>
           <div className="footer-links">
-            {email && <a href={`mailto:${email}`}>{email}</a>}
-            {whatsappNumber && (
+            {emailVisible && <a href={`mailto:${email}`}>{email}</a>}
+            {waVisible && (
               <a
-                href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappMessage)}`}
+                href={`https://wa.me/${waDigits}?text=${encodeURIComponent(whatsappMessage || '')}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -97,7 +104,9 @@ export function SiteFooter({
       </div>
 
       <div className="footer-bottom">
-        <span>© {year} {brandName}. Built with care.</span>
+        <span>
+          © {year} {brandName}. Built with care.
+        </span>
         <Link href="/privacy">Privacy</Link>
       </div>
     </footer>

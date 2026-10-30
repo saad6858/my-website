@@ -1,30 +1,39 @@
 import {ContactForm} from '@/components/contact-form';
-import {getPublishedPage,getSiteSettings} from '@/lib/public-data';
+import {getPublishedPage, getSiteSettings} from '@/lib/public-data';
 import {SectionRenderer} from '@/components/section-renderer';
 import {Reveal} from '@/components/motion-system';
 import type {Metadata} from 'next';
 
-export const metadata:Metadata={
-  title:'Contact',
-  description:'Start a conversation about AI automation.'
+export const metadata: Metadata = {
+  title: 'Contact',
+  description: 'Start a conversation about AI automation.'
 };
 
-export default async function Contact(){
-  const [settings,page]=await Promise.all([getSiteSettings(),getPublishedPage('contact')]);
+export default async function Contact() {
+  const [settings, page] = await Promise.all([getSiteSettings(), getPublishedPage('contact')]);
+  const showEmail = settings.showEmail !== false && typeof settings.email === 'string' && settings.email.includes('@');
+  const waDigits =
+    typeof settings.whatsappNumber === 'string' ? settings.whatsappNumber.replace(/[^0-9]/g, '') : '';
+  const showWhatsApp = settings.showWhatsApp !== false && waDigits.length >= 8;
+
   return (
     <main id="main">
-      <SectionRenderer sections={page?.sections||[]}/>
+      <SectionRenderer sections={page?.sections || []} />
       <Reveal className="section-wrap contact-layout">
         <aside className="contact-aside">
           <p className="eyebrow">A GOOD PLACE TO START</p>
           <p>What takes too much time? Where do requests get stuck? What information is hard to find?</p>
-          {settings.email && (
-            <p><a href={`mailto:${settings.email}`}>{settings.email}</a></p>
+          {showEmail && (
+            <p>
+              <a href={`mailto:${settings.email}`}>{settings.email}</a>
+            </p>
           )}
-          {settings.whatsappNumber && (
+          {showWhatsApp && (
             <p>
               <a
-                href={`https://wa.me/${String(settings.whatsappNumber).replace(/[^0-9]/g,'')}?text=${encodeURIComponent(settings.whatsappMessage||'Hi Saad, I would like to discuss an AI automation idea.')}`}
+                href={`https://wa.me/${waDigits}?text=${encodeURIComponent(
+                  settings.whatsappMessage || 'Hi Saad, I would like to discuss an AI automation idea.'
+                )}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -33,10 +42,11 @@ export default async function Contact(){
             </p>
           )}
           <p className="form-note">
-            Please do not submit patient information, health data, passwords, credentials or other sensitive information.
+            Please do not submit patient information, health data, passwords, credentials or other sensitive
+            information.
           </p>
         </aside>
-        <ContactForm/>
+        <ContactForm />
       </Reveal>
     </main>
   );
