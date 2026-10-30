@@ -1,0 +1,50 @@
+name: Apply audit fix (media FAQ contact sitemap)
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack
+        run: |
+          set -euo pipefail
+          test -f AUDIT-FIX-MEDIA-FAQ-CONTACT.zip
+          unzip -o AUDIT-FIX-MEDIA-FAQ-CONTACT.zip -d /tmp/pack
+          mkdir -p "app/projects/[slug]" app/faq app/api/admin/settings app/contact components
+          cp -f "/tmp/pack/app/projects/[slug]/page.tsx" "app/projects/[slug]/page.tsx"
+          cp -f /tmp/pack/app/faq/page.tsx app/faq/page.tsx
+          cp -f /tmp/pack/app/sitemap.ts app/sitemap.ts
+          cp -f /tmp/pack/app/layout.tsx app/layout.tsx
+          cp -f /tmp/pack/app/globals.css app/globals.css
+          cp -f /tmp/pack/app/contact/page.tsx app/contact/page.tsx
+          cp -f /tmp/pack/app/api/admin/settings/route.ts app/api/admin/settings/route.ts
+          cp -f /tmp/pack/components/site-footer.tsx components/site-footer.tsx
+      - name: Verify
+        run: |
+          set -euo pipefail
+          grep -q 'getPublishedPage' "app/projects/[slug]/page.tsx"
+          grep -q 'SectionRenderer' "app/projects/[slug]/page.tsx"
+          grep -q 'cmsHasFaq' app/faq/page.tsx
+          grep -q 'showEmail' components/site-footer.tsx
+          grep -q 'showWhatsApp' app/layout.tsx
+          grep -q 'showEmail' app/api/admin/settings/route.ts
+          grep -q 'home' app/sitemap.ts
+          grep -q 'cms-faq-list' app/globals.css
+          grep -q 'project-hero-media' app/globals.css
+          echo VERIFY_OK
+      - name: Commit
+        run: |
+          git config user.name "sm-fix-bot"
+          git config user.email "bot@smautomations.tech"
+          git add "app/projects/[slug]/page.tsx" app/faq/page.tsx app/sitemap.ts app/layout.tsx app/globals.css app/contact/page.tsx app/api/admin/settings/route.ts components/site-footer.tsx
+          git commit -m "fix: project CMS media, FAQ single source, contact toggles, sitemap dedupe" || true
+          git push || true
+      - name: Cleanup zip and workflow
+        run: |
+          set -euo pipefail
+          git rm -f AUDIT-FIX-MEDIA-FAQ-CONTACT.zip .github/workflows/apply-audit-fix.yml 2>/dev/null || true
+          git commit -m "chore: remove audit fix zip and apply workflow after successful apply" || true
+          git push || true
