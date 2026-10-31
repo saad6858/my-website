@@ -1,0 +1,43 @@
+name: Apply CMS image JSON support
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack and apply
+        run: |
+          set -euo pipefail
+          test -f CMS-IMAGE-JSON-FIX.zip
+          unzip -o CMS-IMAGE-JSON-FIX.zip -d /tmp/pack
+          mkdir -p components
+          cp -f /tmp/pack/components/section-renderer.tsx components/section-renderer.tsx
+          # Append CSS once if markers missing
+          if ! grep -q 'showcase-art-photo' app/globals.css; then
+            echo "" >> app/globals.css
+            cat /tmp/pack/cms-image-cards.css >> app/globals.css
+          fi
+      - name: Verify
+        run: |
+          set -euo pipefail
+          grep -q 'itemImageSrc' components/section-renderer.tsx
+          grep -q 'showcase-art-photo' components/section-renderer.tsx
+          ! grep -q 'INTELLIGENCE / IN MOTION' components/section-renderer.tsx
+          grep -q 'showcase-art-photo' app/globals.css
+          echo VERIFY_OK
+      - name: Commit
+        run: |
+          git config user.name "sm-fix-bot"
+          git config user.email "bot@smautomations.tech"
+          git add components/section-renderer.tsx app/globals.css
+          git commit -m "fix: CMS item images via JSON; remove hero-index label" || true
+          git push || true
+      - name: Cleanup zip and workflow
+        run: |
+          set -euo pipefail
+          git rm -f CMS-IMAGE-JSON-FIX.zip .github/workflows/apply-cms-image-fix.yml 2>/dev/null || true
+          git commit -m "chore: remove CMS image fix zip and workflow after apply" || true
+          git push || true
